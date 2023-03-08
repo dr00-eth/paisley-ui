@@ -1,13 +1,37 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.hero.is-fullheight {
+  height: 100%;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+#chat-display {
+  height: 500px;
+  overflow-y: scroll;
+}
+
+.chat-bubble {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  max-width: 70%;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.user .chat-bubble {
+  background-color: #00d1b2;
+  align-self: flex-end;
+}
+
+.assistant .chat-bubble {
+  background-color: #f5f5f5;
+  align-self: flex-start;
+}
+
+.sender {
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.message {
+  font-size: 1rem;
 }

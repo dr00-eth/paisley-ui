@@ -21,7 +21,7 @@ header {
 
 /* Chat display styles */
 #chat-display {
-  height: 400px;
+  height: 90%;
   margin: 10px;
   padding: 10px;
   overflow-y: scroll;

@@ -7,6 +7,7 @@ class App extends Component {
     super(props);
     this.state = {
       messages: [],
+      displayMessages: [],
       messageInput: '',
       connection_id: ''
     };
@@ -14,15 +15,16 @@ class App extends Component {
     this.handleMessage = this.handleMessage.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.chatDisplayRef = React.createRef();
+    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
   }
 
   componentDidMount() {
-    this.socket = io('https://paisley-api-naqoz.ondigitalocean.app/');
+    this.socket = io(this.apiServerUrl);
     this.socket.on('message', this.handleMessage);
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id}, () => {
-        fetch(`https://paisley-api-naqoz.ondigitalocean.app/api/getmessages/${this.state.connection_id}`)
+        fetch(`${this.apiServerUrl}/api/getmessages/${this.state.connection_id}`)
           .then(response => response.json())
           .then(data => {
             const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
@@ -44,33 +46,42 @@ class App extends Component {
 
   handleMessage(data) {
     const messages = this.state.messages.slice();
+    const displayMessages = this.state.displayMessages.slice();
     const latestMsg = messages[messages.length - 1];
-    if (latestMsg && latestMsg.role === "assistant") {
+    const latestDisplayMsg = displayMessages[displayMessages.length - 1];
+    if (latestMsg && latestMsg.role === "assistant" && latestDisplayMsg && latestDisplayMsg.role === "assistant") {
       // Append incoming message to the latest assistant message
       latestMsg.content += data.message;
+      latestDisplayMsg.content += data.message;
     } else {
       // Add a new assistant message with the incoming message
       messages.push({ role: "assistant", content: data.message });
+      displayMessages.push({ role: "assistant", content: data.message })
     }
-    this.setState({ messages: messages });
+    this.setState({ messages: messages, displayMessages: displayMessages });
   }
 
   sendMessage(event) {
     event.preventDefault();
     if (this.state.messageInput) {
       const messages = [...this.state.messages];
+      const displayMessages = [...this.state.displayMessages];
       messages.push({
         role: 'user',
         content: this.state.messageInput
       });
-      this.setState({ messages, messageInput: '' });
+      displayMessages.push({
+        role: 'user',
+        content: this.state.messageInput
+      });
+      this.setState({ messages, displayMessages, messageInput: '' });
   
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: this.state.messageInput, connection_id: this.state.connection_id })
       };
-      fetch('https://paisley-api-naqoz.ondigitalocean.app/api/messages', requestOptions)
+      fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to send message');
@@ -87,12 +98,12 @@ class App extends Component {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connection_id: this.state.connection_id })
     };
-    fetch('https://paisley-api-naqoz.ondigitalocean.app/api/newchat', requestOptions)
+    fetch(`${this.apiServerUrl}/api/newchat`, requestOptions)
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to reset chat');
         }
-        this.setState({ messages: [] });
+        this.setState({ messages: [], displayMessages: [] });
       })
       .catch(error => console.error(error));
   }
@@ -104,7 +115,7 @@ class App extends Component {
   }
 
   render() {
-    const messages = this.state.messages.map((msg, index) => (
+    const messages = this.state.displayMessages.map((msg, index) => (
       <div
         key={index}
         className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"}`}

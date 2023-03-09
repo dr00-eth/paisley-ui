@@ -7,7 +7,8 @@ class App extends Component {
     super(props);
     this.state = {
       messages: [],
-      messageInput: ''
+      messageInput: '',
+      connection_id: ''
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
@@ -16,18 +17,22 @@ class App extends Component {
   }
 
   componentDidMount() {
-    this.socket = io('https://ChatAPI.dr00shieeth.repl.co');
+    this.socket = io('https://paisley-api-naqoz.ondigitalocean.app/');
     this.socket.on('message', this.handleMessage);
-    fetch('https://ChatAPI.dr00shieeth.repl.co/api/messages')
-      .then(response => response.json())
-      .then(data => {
-        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages });
-      })
-      .catch(error => console.error(error));
+    this.socket.on('connect', () => {
+      console.log("Socket Connected:", this.socket.id);
+      this.setState({ connection_id: this.socket.id}, () => {
+        fetch(`https://paisley-api-naqoz.ondigitalocean.app/api/getmessages/${this.state.connection_id}`)
+          .then(response => response.json())
+          .then(data => {
+            const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
+            this.setState({ messages: messages });
+          })
+          .catch(error => console.error(error));
+      });
+    });
   }
   
-
   componentWillUnmount() {
     this.socket.off('message', this.handleMessage);
     this.socket.disconnect();
@@ -63,9 +68,9 @@ class App extends Component {
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: this.state.messageInput })
+        body: JSON.stringify({ message: this.state.messageInput, connection_id: this.state.connection_id })
       };
-      fetch('https://ChatAPI.dr00shieeth.repl.co/api/messages', requestOptions)
+      fetch('https://paisley-api-naqoz.ondigitalocean.app/api/messages', requestOptions)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to send message');
@@ -79,9 +84,10 @@ class App extends Component {
     event.preventDefault();
     const requestOptions = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connection_id: this.state.connection_id })
     };
-    fetch('https://ChatAPI.dr00shieeth.repl.co/api/newchat', requestOptions)
+    fetch('https://paisley-api-naqoz.ondigitalocean.app/api/newchat', requestOptions)
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to reset chat');

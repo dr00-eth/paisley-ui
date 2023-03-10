@@ -9,13 +9,15 @@ class App extends Component {
       messages: [],
       displayMessages: [],
       messageInput: '',
-      connection_id: ''
+      connection_id: '',
+      context_id: 0
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
+    this.changeContext = this.changeContext.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.chatDisplayRef = React.createRef();
-    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
+    this.apiServerUrl = 'http://127.0.0.1:8008'
   }
 
   componentDidMount() {
@@ -24,7 +26,7 @@ class App extends Component {
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id}, () => {
-        fetch(`${this.apiServerUrl}/api/getmessages/${this.state.connection_id}`)
+        fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(response => response.json())
           .then(data => {
             const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
@@ -42,6 +44,18 @@ class App extends Component {
 
   componentDidUpdate() {
     this.scrollToBottom();
+  }
+
+  changeContext(event) {
+    const newContextId = event.target.value;
+    this.setState({ context_id: newContextId, messages: [], displayMessages: [] });
+    fetch(`${this.apiServerUrl}/api/getmessages/${newContextId}/${this.state.connection_id}`)
+          .then(response => response.json())
+          .then(data => {
+            const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
+            this.setState({ messages: messages });
+          })
+          .catch(error => console.error(error));
   }
 
   handleMessage(data) {
@@ -79,7 +93,7 @@ class App extends Component {
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: this.state.messageInput, connection_id: this.state.connection_id })
+        body: JSON.stringify({ message: this.state.messageInput, user_id: this.state.connection_id, context_id: this.state.context_id })
       };
       fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
         .then(response => {
@@ -96,7 +110,7 @@ class App extends Component {
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connection_id: this.state.connection_id })
+      body: JSON.stringify({ user_id: this.state.connection_id, context_id: this.state.context_id })
     };
     fetch(`${this.apiServerUrl}/api/newchat`, requestOptions)
       .then(response => {
@@ -115,6 +129,19 @@ class App extends Component {
   }
 
   render() {
+    const contextOptions = [
+      { value: 0, label: 'Listing Marketing' },
+      { value: 1, label: 'Area Marketing' },
+    ];
+
+    const dropdownItems = contextOptions.map((option, index) => {
+      return (
+        <option key={index} value={option.value}>
+          {option.label}
+        </option>
+      );
+    });
+
     const messages = this.state.displayMessages.map((msg, index) => (
       <div
         key={index}
@@ -127,7 +154,10 @@ class App extends Component {
     return (
       <div className="App">
         <header className="App-header">
-          <h1 className="App-title">StreamBot Chat</h1>
+          <h1 className="App-title">TheGenie - Paisley Chat</h1>
+          <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>
+            {dropdownItems}
+          </select>
         </header>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length > 0 ? (

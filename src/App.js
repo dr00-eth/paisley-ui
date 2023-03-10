@@ -10,11 +10,14 @@ class App extends Component {
       displayMessages: [],
       messageInput: '',
       connection_id: '',
-      context_id: 0
+      context_id: 0,
+      agentProfileUserId: '',
+      isUserIdInputDisabled: false,
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
     this.changeContext = this.changeContext.bind(this);
+    this.getAgentProfile = this.getAgentProfile.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.chatDisplayRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
@@ -25,7 +28,7 @@ class App extends Component {
     this.socket.on('message', this.handleMessage);
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
-      this.setState({ connection_id: this.socket.id}, () => {
+      this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(response => response.json())
           .then(data => {
@@ -36,7 +39,7 @@ class App extends Component {
       });
     });
   }
-  
+
   componentWillUnmount() {
     this.socket.off('message', this.handleMessage);
     this.socket.disconnect();
@@ -50,12 +53,12 @@ class App extends Component {
     const newContextId = event.target.value;
     this.setState({ context_id: newContextId, messages: [], displayMessages: [] });
     fetch(`${this.apiServerUrl}/api/getmessages/${newContextId}/${this.state.connection_id}`)
-          .then(response => response.json())
-          .then(data => {
-            const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-            this.setState({ messages: messages });
-          })
-          .catch(error => console.error(error));
+      .then(response => response.json())
+      .then(data => {
+        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
+        this.setState({ messages: messages });
+      })
+      .catch(error => console.error(error));
   }
 
   handleMessage(data) {
@@ -89,7 +92,7 @@ class App extends Component {
         content: this.state.messageInput
       });
       this.setState({ messages, displayMessages, messageInput: '' });
-  
+
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,7 +106,7 @@ class App extends Component {
         })
         .catch(error => console.error(error));
     }
-  }  
+  }
 
   resetChat(event) {
     event.preventDefault();
@@ -117,15 +120,66 @@ class App extends Component {
         if (!response.ok) {
           throw new Error('Failed to reset chat');
         }
-        this.setState({ messages: [], displayMessages: [] });
+        return fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`);
+      })
+      .then(response => response.json())
+      .then(data => {
+        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
+        this.setState({ messages: messages, displayMessages: [] });
       })
       .catch(error => console.error(error));
+    console.log(this.state.messages);
   }
-  
+
+
   scrollToBottom() {
     if (this.chatDisplayRef.current) {
       this.chatDisplayRef.current.scrollTop = this.chatDisplayRef.current.scrollHeight;
     }
+  }
+
+
+  async getAgentProfile(event, thirdPerson = false) {
+    event.preventDefault();
+    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${event.target[0].value}`;
+    const requestOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
+    }
+    const genieResults = await fetch(genieApi, requestOptions);
+    const agentInfo = await genieResults.json();
+    const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
+    const displayName = agentInfo.marketingSettings.profile.displayName;
+    const email = agentInfo.marketingSettings.profile.email;
+    const phone = agentInfo.marketingSettings.profile.phone;
+    const website = agentInfo.marketingSettings.profile.websiteUrl;
+    const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber;
+    const about = agentInfo.marketingSettings.profile.about;
+    const messages = this.state.messages.slice();
+
+    const assistantPrompt = 'In order you assist you in the best possible way, can you provide me with more information about yourself and any relevant details I might need to optimize my content suggestions?';
+
+    await this.addMessage("assistant", assistantPrompt);
+
+    messages.push({ role: "assistant", content: assistantPrompt });
+
+    const agentPrompt = `Sure! My name is ${name}, my prefered display name for marketing purposes is ${displayName} so when constructing signature blocks, list my name and my display name as separate lines if they are different, my email address is ${email}, my phone number is ${phone}, my website is ${website}, my license number is ${licenseNumber}. A little about myself: ${about}`;
+
+    await this.addMessage("user", agentPrompt);
+
+    messages.push({ role: "user", content: agentPrompt });
+    console.log(messages);
+    this.setState({ messages: messages, isUserIdInputDisabled: true })
+  }
+
+  async addMessage(role, message) {
+    const streambotApi = `${this.apiServerUrl}/api/addmessages`;
+    const addMsgRequestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role, message: message, user_id: this.state.connection_id, context_id: this.state.context_id })
+    }
+    await fetch(streambotApi, addMsgRequestOptions);
   }
 
   render() {
@@ -133,7 +187,7 @@ class App extends Component {
       { value: 0, label: 'Listing Marketing' },
       { value: 1, label: 'Area Marketing' },
     ];
-
+    const { isUserIdInputDisabled } = this.state;
     const dropdownItems = contextOptions.map((option, index) => {
       return (
         <option key={index} value={option.value}>
@@ -159,6 +213,21 @@ class App extends Component {
             {dropdownItems}
           </select>
         </header>
+        <div>
+          <form onSubmit={this.getAgentProfile}>
+            <label>User ID:</label>
+            <input
+              type="text"
+              value={this.state.agentProfileUserId}
+              placeholder="Enter AspNetUserID"
+              onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
+              disabled={isUserIdInputDisabled}
+            />
+            <button
+              disabled={isUserIdInputDisabled}
+              type="submit">Save</button>
+          </form>
+        </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length > 0 ? (
             messages

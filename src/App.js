@@ -13,6 +13,7 @@ class App extends Component {
       context_id: 0,
       agentProfileUserId: '',
       isUserIdInputDisabled: false,
+      isUserListingSelectDisabled: false,
       isLoading: false,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
@@ -22,6 +23,7 @@ class App extends Component {
     this.handleMessage = this.handleMessage.bind(this);
     this.changeContext = this.changeContext.bind(this);
     this.getAgentProfile = this.getAgentProfile.bind(this);
+    this.getPropertyProfile = this.getPropertyProfile.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.userSelectedListing = this.userSelectedListing.bind(this);
     this.chatDisplayRef = React.createRef();
@@ -163,7 +165,7 @@ class App extends Component {
     const requestOptions = {
       method: 'POST',
       headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({userId: this.state.agentProfileUserId, includeOpenHouses: false}),
+      body: JSON.stringify({ userId: this.state.agentProfileUserId, includeOpenHouses: false }),
     }
     fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
       .then(response => response.json())
@@ -187,13 +189,112 @@ class App extends Component {
       });
   }
 
-  userSelectedListing(event) {
+  async userSelectedListing(event) {
+    event.preventDefault();
     const [mlsID, mlsNumber] = event.target.value.split('_');
     console.log(`${mlsID}_${mlsNumber}`);
+    this.showLoading();
+    await this.getPropertyProfile(mlsID, mlsNumber);
+    this.hideLoading();
     this.setState({
       selectedListingMlsID: mlsID,
       selectedListingMlsNumber: mlsNumber
     });
+  }
+
+  async getPropertyProfile(mlsId, mlsNumber) {
+    const messages = this.state.messages.slice();
+    const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
+    const requestOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mlsId: mlsId, mlsNumber: mlsNumber, userId: this.state.agentProfileUserId, consumer: 0 })
+    }
+    const genieResults = await fetch(genieApi, requestOptions);
+    const { listing, ...rest } = await genieResults.json();
+    const listingInfo = { ...listing };
+    const fullResponse = { listing, ...rest };
+
+    const listingAddress = listingInfo.listingAddress;
+    const virtualTourUrl = listingInfo.virtualTourUrl;
+    const bedrooms = listingInfo.bedrooms;
+    const totalBathrooms = listingInfo.totalBathrooms;
+    const propertyType = listingInfo.propertyType;
+    const propertyTypeId = listingInfo.propertyTypeID;
+    const city = listingInfo.city;
+    const state = listingInfo.state;
+    const zip = listingInfo.zip;
+    const squareFeet = listingInfo.squareFeet;
+    const acres = listingInfo.acres;
+    const garageSpaces = listingInfo.garageSpaces;
+    const yearBuilt = listingInfo.yearBuilt;
+    const listingAgentName = listingInfo.listingAgentName;
+    const listingBrokerName = listingInfo.listingBrokerName;
+    const listingStatus = listingInfo.listingStatus;
+    const remarks = listingInfo.remarks;
+    const preferredAreaId = fullResponse.preferredAreaId;
+    const formatPrice = (price) => {
+      return `$${price.toLocaleString()}`;
+    };
+    const priceStr = listingInfo.highPrice
+      ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
+      : `${formatPrice(listingInfo.lowPrice)}`;
+    const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
+
+    const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
+
+    await this.addMessage("assistant", assistantPrompt);
+    messages.push({ role: "assistant", content: assistantPrompt });
+
+    const listingPrompt = `I have a new ${listingStatus} listing located at: ${listingAddress} listed for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}`;
+
+    await this.addMessage("user", listingPrompt);
+    messages.push({ role: "user", content: listingPrompt });
+
+    if (preferredAreaId > 0) {
+      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
+      const areaStatsptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
+      }
+      const statsResults = await fetch(areaStatsApi, areaStatsptions);
+      const { statistics } = await statsResults.json();
+
+      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
+      const areaNameOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0 })
+      }
+      const nameResults = await fetch(areaNameApi, areaNameOptions);
+      const { areaName } = await nameResults.json();
+
+      const areaStatsPrompts = [];
+      areaStatsPrompts.push(`This property exists in the ${areaName} neighborhood.`);
+
+      for (const lookback of statistics) {
+        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+
+        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
+
+        if (propTypeStats.length > 0) {
+          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
+          const statistics = propTypeStats[0].statistics;
+          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+        }
+      }
+      const areaStatPrompt = areaStatsPrompts.join('\n');
+
+      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
+      messages.push({ role: "assistant", content: assistantPrompt });
+
+      await this.addMessage("user", areaStatPrompt);
+      messages.push({ role: "user", content: areaStatPrompt });
+    }
+
+    console.log(messages);
+    this.setState({ messages: messages, isUserIdInputDisabled: true });
   }
 
   async getAgentProfile(event) {
@@ -291,18 +392,18 @@ class App extends Component {
               type="submit">Save</button>
           </form>
           {this.state.agentProfileUserId && this.state.listings.length > 0 && (
-          <div className='listingSelectBox'>
-            <label>Select Listing:</label>
-            <select className='Content-dropdown' onChange={this.userSelectedListing}>
-              <option value="">-- Select Listing --</option>
-              {this.state.listings.map(listing => (
-                <option key={`${listing.mlsID}_${listing.mlsNumber}`} value={`${listing.mlsID}_${listing.mlsNumber}`}>
-                  {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+            <div className='listingSelectBox'>
+              <label>Select Listing:</label>
+              <select className='Content-dropdown' disabled={this.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
+                <option value="">-- Select Listing --</option>
+                {this.state.listings.map((listing,index) => (
+                  <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
+                    {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length > 0 ? (

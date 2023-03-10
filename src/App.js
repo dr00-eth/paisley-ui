@@ -13,12 +13,17 @@ class App extends Component {
       context_id: 0,
       agentProfileUserId: '',
       isUserIdInputDisabled: false,
+      isLoading: false,
+      selectedListingMlsID: '',
+      selectedListingMlsNumber: '',
+      listings: [],
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
     this.changeContext = this.changeContext.bind(this);
     this.getAgentProfile = this.getAgentProfile.bind(this);
     this.resetChat = this.resetChat.bind(this);
+    this.userSelectedListing = this.userSelectedListing.bind(this);
     this.chatDisplayRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
   }
@@ -47,6 +52,16 @@ class App extends Component {
 
   componentDidUpdate() {
     this.scrollToBottom();
+  }
+
+  // function to show loading indicator/notification
+  showLoading() {
+    this.setState({ isLoading: true });
+  }
+
+  // function to hide loading indicator/notification
+  hideLoading() {
+    this.setState({ isLoading: false });
   }
 
   changeContext(event) {
@@ -110,6 +125,7 @@ class App extends Component {
 
   resetChat(event) {
     event.preventDefault();
+    this.showLoading();
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,6 +134,7 @@ class App extends Component {
     fetch(`${this.apiServerUrl}/api/newchat`, requestOptions)
       .then(response => {
         if (!response.ok) {
+          this.hideLoading();
           throw new Error('Failed to reset chat');
         }
         return fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`);
@@ -125,9 +142,13 @@ class App extends Component {
       .then(response => response.json())
       .then(data => {
         const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages, displayMessages: [] });
+        this.setState({ messages: messages, displayMessages: [], isUserIdInputDisabled: false, agentProfileUserId: 0 });
+        this.hideLoading();
       })
-      .catch(error => console.error(error));
+      .catch(error => {
+        this.hideLoading();
+        console.error(error)
+      });
     console.log(this.state.messages);
   }
 
@@ -138,9 +159,46 @@ class App extends Component {
     }
   }
 
+  getUserListings() {
+    const requestOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({userId: this.state.agentProfileUserId, includeOpenHouses: false}),
+    }
+    fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        // filter properties with listDate > 60 days ago
+        const listings = data.properties.filter(property => {
+          const listDate = new Date(property.listDate);
+          const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
+          return daysAgo > 60;
+        });
 
-  async getAgentProfile(event, thirdPerson = false) {
+        // sort listings by listDate descending
+        listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
+
+        // update state with fetched listings
+        this.setState({ listings });
+      })
+      .catch(error => {
+        // handle error
+        console.error(error);
+      });
+  }
+
+  userSelectedListing(event) {
+    const [mlsID, mlsNumber] = event.target.value.split('_');
+    console.log(`${mlsID}_${mlsNumber}`);
+    this.setState({
+      selectedListingMlsID: mlsID,
+      selectedListingMlsNumber: mlsNumber
+    });
+  }
+
+  async getAgentProfile(event) {
     event.preventDefault();
+    this.showLoading();
     const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${event.target[0].value}`;
     const requestOptions = {
       method: 'POST',
@@ -170,6 +228,8 @@ class App extends Component {
     messages.push({ role: "user", content: agentPrompt });
     console.log(messages);
     this.setState({ messages: messages, isUserIdInputDisabled: true })
+    this.getUserListings();
+    this.hideLoading();
   }
 
   async addMessage(role, message) {
@@ -207,6 +267,9 @@ class App extends Component {
     ));
     return (
       <div className="App">
+        <div id="loading-container" style={{ display: this.state.isLoading ? 'flex' : 'none' }}>
+          <p>Loading...</p>
+        </div>
         <header className="App-header">
           <h1 className="App-title">TheGenie - Paisley Chat</h1>
           <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>
@@ -214,7 +277,7 @@ class App extends Component {
           </select>
         </header>
         <div>
-          <form onSubmit={this.getAgentProfile}>
+          <form className='user-form' onSubmit={this.getAgentProfile}>
             <label>User ID:</label>
             <input
               type="text"
@@ -227,6 +290,19 @@ class App extends Component {
               disabled={isUserIdInputDisabled}
               type="submit">Save</button>
           </form>
+          {this.state.agentProfileUserId && this.state.listings.length > 0 && (
+          <div className='listingSelectBox'>
+            <label>Select Listing:</label>
+            <select className='Content-dropdown' onChange={this.userSelectedListing}>
+              <option value="">-- Select Listing --</option>
+              {this.state.listings.map(listing => (
+                <option key={`${listing.mlsID}_${listing.mlsNumber}`} value={`${listing.mlsID}_${listing.mlsNumber}`}>
+                  {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length > 0 ? (
@@ -242,6 +318,7 @@ class App extends Component {
               onChange={(e) => this.setState({ messageInput: e.target.value })}
               type="text"
               placeholder="Enter your message..."
+              disabled={this.state.isLoading}
             />
             <button type="submit">Send</button>
             <button onClick={this.resetChat}>Reset Chat</button>

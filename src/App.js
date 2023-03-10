@@ -17,7 +17,7 @@ class App extends Component {
     this.changeContext = this.changeContext.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.chatDisplayRef = React.createRef();
-    this.apiServerUrl = 'http://127.0.0.1:8008'
+    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
   }
 
   componentDidMount() {

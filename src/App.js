@@ -382,7 +382,7 @@ class App extends Component {
             {dropdownItems}
           </select>
         </header>
-        <div>
+        <div className='form-controls'>
           <form className='user-form' onSubmit={this.getAgentProfile}>
             <label>User ID:</label>
             <input

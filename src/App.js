@@ -1,6 +1,7 @@
 import './App.css';
 import React, { Component } from 'react';
 import io from 'socket.io-client';
+import { parse, Renderer } from 'marked';
 
 class App extends Component {
   constructor(props) {
@@ -357,15 +358,19 @@ class App extends Component {
       );
     });
 
-    const messages = this.state.displayMessages.map((msg, index) => (
-      <div
-        key={index}
-        className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"}`}
-      >
-        <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
-        <div className="message">{msg.content}</div>
-      </div>
-    ));
+    const messages = this.state.displayMessages.map((msg, index) => {
+      const content = parse(msg.content, { renderer: new Renderer() });
+      return (
+        <div
+          key={index}
+          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"}`}
+        >
+          <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
+          <div className="message" dangerouslySetInnerHTML={{__html: content}}></div>
+        </div>
+      );
+    });
+    
     return (
       <div className="App">
         <div id="loading-container" style={{ display: this.state.isLoading ? 'flex' : 'none' }}>

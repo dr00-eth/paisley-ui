@@ -29,6 +29,7 @@ class App extends Component {
     this.resetChat = this.resetChat.bind(this);
     this.userSelectedListing = this.userSelectedListing.bind(this);
     this.chatDisplayRef = React.createRef();
+    this.selectRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
   }
 
@@ -149,8 +150,9 @@ class App extends Component {
       .then(response => response.json())
       .then(data => {
         const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages, displayMessages: [] });
+        this.setState({ messages: messages, displayMessages: [], isUserListingSelectDisabled: false, selectedListingMlsID: '', selectedListingMlsNumber: '' });
         this.getAgentProfile();
+        this.selectRef.current.value = '';
         this.hideLoading();
       })
       .catch(error => {
@@ -242,9 +244,12 @@ class App extends Component {
     const formatPrice = (price) => {
       return `$${price.toLocaleString()}`;
     };
-    const priceStr = listingInfo.highPrice
-      ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
-      : `${formatPrice(listingInfo.lowPrice)}`;
+    const priceStr = listingStatus === "Sold"
+      ? `${formatPrice(listingInfo.salePrice)}`
+      : (listingInfo.highPrice
+        ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
+        : `${formatPrice(listingInfo.lowPrice)}`
+    );
     const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
 
     const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
@@ -252,7 +257,8 @@ class App extends Component {
     await this.addMessage("assistant", assistantPrompt);
     messages.push({ role: "assistant", content: assistantPrompt });
 
-    const listingPrompt = `I have a new ${listingStatus} listing located at: ${listingAddress} listed for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}`;
+    const listingPrompt = `I have a new ${listingStatus} property located at: ${listingAddress} ${listingStatus === 'Active' ? 'Listed' : (listingStatus === 'Pending' ? 'Pending' : 'Sold')}
+    for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
 
     await this.addMessage("user", listingPrompt);
     messages.push({ role: "user", content: listingPrompt });
@@ -341,7 +347,7 @@ class App extends Component {
     }
 
     console.log(messages);
-    this.setState({ messages: messages, isUserIdInputDisabled: true });
+    this.setState({ messages: messages, isUserListingSelectDisabled: true });
   }
 
   async getAgentProfile(event) {
@@ -473,11 +479,11 @@ class App extends Component {
           {this.state.agentProfileUserId && this.state.listings.length > 0 && (
             <div className='listingSelectBox'>
               <label>Select Listing:</label>
-              <select className='Content-dropdown' disabled={this.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
+              <select ref={this.selectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
                 <option value="">-- Select Listing --</option>
                 {this.state.listings.map((listing, index) => (
                   <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
-                    {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber}
+                    {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
                   </option>
                 ))}
               </select>

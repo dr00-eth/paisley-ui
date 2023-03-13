@@ -20,12 +20,13 @@ body {
 header {
   background-color: #1B3448;
   color: white;
-  padding: 1.5rem;
+  padding: 0.5rem 1.5rem;
 }
 
 .App-title {
   margin: 0;
   margin-bottom: 1rem;
+  display: inline-block;
 }
 
 .Content-dropdown {
@@ -39,7 +40,7 @@ header {
 
 .user-form {
   font-size: 1rem;
-  display: inline-block;
+  float: right;
 }
 
 .form-controls {
@@ -131,13 +132,14 @@ header {
   justify-content: center;
   width: 97%;
   margin-bottom: 1rem;
-  padding: 1rem;
+  padding: 0rem 1rem;
 }
 
 .menu-buttons {
   display: flex;
   justify-content: center;
   width: 90%;
+  flex-wrap: wrap;
 }
 
 #chat-input form {
@@ -178,6 +180,7 @@ button {
 
 .menu-buttons > button {
   margin-bottom: 0.5rem;
+  width: 13%;
 }
 
 

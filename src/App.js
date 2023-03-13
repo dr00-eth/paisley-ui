@@ -593,11 +593,6 @@ class App extends Component {
         </div>
         <header className="App-header">
           <h1 className="App-title">TheGenie - Paisley Chat</h1>
-          <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>
-            {dropdownItems}
-          </select>
-        </header>
-        <div className='form-controls'>
           <form className='user-form' onSubmit={this.getAgentProfile}>
             <label>User ID </label>
             <input
@@ -612,7 +607,6 @@ class App extends Component {
                 disabled={isUserIdInputDisabled}
                 type="submit">Save</button>
             )}
-
           </form>
           {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
             <div className='listingSelectBox'>
@@ -640,7 +634,7 @@ class App extends Component {
               </select>
             </div>
           )}
-        </div>
+        </header>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length === 0 && this.state.context_id === 0 ? "Select a Listing from the Dropdown" :
             (messages.length === 0 && this.state.context_id === 1 ? "Select an Area from the Dropdown" : messages)}
@@ -653,6 +647,9 @@ class App extends Component {
           )}
         </div>
         <div id="chat-input">
+          <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>
+            {dropdownItems}
+          </select>
           <form onSubmit={this.sendMessage}>
             <input
               value={this.state.messageInput}

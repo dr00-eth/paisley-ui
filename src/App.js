@@ -2,6 +2,7 @@ import './App.css';
 import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
+import TurndownService from 'turndown';
 
 class App extends Component {
   constructor(props) {
@@ -16,10 +17,13 @@ class App extends Component {
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
+      isUserAreaSelectDisabled: false,
       isLoading: false,
+      showCopyNotification: false,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       listings: [],
+      areas: []
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
@@ -28,8 +32,9 @@ class App extends Component {
     this.getPropertyProfile = this.getPropertyProfile.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.userSelectedListing = this.userSelectedListing.bind(this);
+    this.userSelectedArea = this.userSelectedArea.bind(this);
     this.chatDisplayRef = React.createRef();
-    this.selectRef = React.createRef();
+    this.listingSelectRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
   }
 
@@ -73,7 +78,7 @@ class App extends Component {
   }
 
   changeContext(event) {
-    const newContextId = event.target.value;
+    const newContextId = parseInt(event.target.value);
     this.setState({ context_id: newContextId, messages: [], displayMessages: [] });
     fetch(`${this.apiServerUrl}/api/getmessages/${newContextId}/${this.state.connection_id}`)
       .then(response => response.json())
@@ -152,7 +157,8 @@ class App extends Component {
         const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
         this.setState({ messages: messages, displayMessages: [], isUserListingSelectDisabled: false, selectedListingMlsID: '', selectedListingMlsNumber: '' });
         this.getAgentProfile();
-        this.selectRef.current.value = '';
+        this.listingSelectRef.current.value = '';
+        this.areaSelectRef.current.value = '';
         this.hideLoading();
       })
       .catch(error => {
@@ -197,6 +203,26 @@ class App extends Component {
       });
   }
 
+  getUserAreas() {
+    const requestOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: this.state.agentProfileUserId, includeTerritories: false, consumer: 0 }),
+    }
+    fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        const areas = data.areas;
+        areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
+        // update state with fetched listings
+        this.setState({ areas });
+      })
+      .catch(error => {
+        // handle error
+        console.error(error);
+      });
+  }
+
   async userSelectedListing(event) {
     event.preventDefault();
     const [mlsID, mlsNumber] = event.target.value.split('_');
@@ -208,6 +234,58 @@ class App extends Component {
       selectedListingMlsID: mlsID,
       selectedListingMlsNumber: mlsNumber
     });
+  }
+
+  async userSelectedArea(event) {
+    event.preventDefault();
+    const areaId = event.target.value;
+    this.showLoading();
+    await this.getAreaStatisticsPrompt(areaId);
+    this.hideLoading();
+    this.setState({
+      selectedAreaId: areaId
+    });
+  }
+
+  async getAreaStatisticsPrompt(areaId) {
+    const messages = this.state.messages.slice();
+    const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
+    const areaStatsptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
+    }
+    const statsResults = await fetch(areaStatsApi, areaStatsptions);
+    const { statistics } = await statsResults.json();
+
+    const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
+    const areaNameOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0 })
+    }
+    const nameResults = await fetch(areaNameApi, areaNameOptions);
+    const { areaName } = await nameResults.json();
+
+    const areaStatsPrompts = [];
+    areaStatsPrompts.push(`The following information is for ${areaName}.`);
+
+    for (const lookback of statistics) {
+      areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+
+      for (const propLookback of lookback.propertyTypeStatistics) {
+        const propTypeDescription = propLookback.propertyTypeDescription;
+        const statistics = propLookback.statistics;
+        areaStatsPrompts.push(`For the ${propTypeDescription} type homes, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} in the last ${lookback.lookbackMonths} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+      }
+    }
+    const areaStatPrompt = areaStatsPrompts.join('\n');
+
+    await this.addMessage("assistant", "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?");
+    messages.push({ role: "assistant", content: "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?" });
+
+    await this.addMessage("user", areaStatPrompt);
+    messages.push({ role: "user", content: areaStatPrompt });
   }
 
   async getPropertyProfile(mlsId, mlsNumber) {
@@ -249,7 +327,7 @@ class App extends Component {
       : (listingInfo.highPrice
         ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
         : `${formatPrice(listingInfo.lowPrice)}`
-    );
+      );
     const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
 
     const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
@@ -386,6 +464,7 @@ class App extends Component {
     console.log(messages);
     this.setState({ messages: messages, isUserIdInputDisabled: true })
     this.getUserListings();
+    this.getUserAreas();
     this.hideLoading();
   }
 
@@ -414,7 +493,7 @@ class App extends Component {
       );
     });
 
-    const menuItems = [
+    const listingMenuItems = [
       { value: "Generate Action Plan", label: 'Generate Action Plan', customPrompt: 'You are going to display an action plan for REALTOR clients designed into the first page of a webapp called TheGenie.  Always write in 2nd person. Do not provide an introduction sentence. Instead, go straight into the breakdown. You will generate a full breakdown of their business, and a comprehensive marketing plan that provides an outlined step by step action plan to market their real estate business. You will generate 4 sections. Section 1 will be called The Breakdown, and it will discuss the agent\'s business based on the listing information given. The Breakdown section will also give an overall rank of the agent\'s business from A to F and provide a few suggestions on how they can increase this rank. Section 2 will be called Your Outline, and will include an outline of all the various steps needed to increase their ranking. Section 3 will be called The Plan, and will feature a comprehensive step by step breakdown of initiating a marketing plan based on the outline and information provided. Section 4 will be called The Recap, and will summarize suggestions along with a message to reach out to their title partner for additional help. Always be comprehensive when generating the 4 sections. Do not include anything else in your response other than the 4 sections, written as detailed prior.' },
       { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
       { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
@@ -424,19 +503,59 @@ class App extends Component {
       { value: "Generate Facebook Copy For this listing", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
     ];
 
-    const buttons = menuItems.map((option, index) => {
+    const listingButtons = listingMenuItems.map((option, index) => {
       return (
-        <button key={index} value={option.value} onClick={(e) => { 
-          this.setState({ messageInput: e.target.value }, () => { 
+        <button key={index} value={option.value} onClick={(e) => {
+          this.setState({ messageInput: e.target.value }, () => {
             this.addMessage("user", option.customPrompt)
             this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
-            this.sendMessage(e); 
-          }); 
-          }}>
+            this.sendMessage(e);
+          });
+        }}>
           {option.label}
         </button>
       );
     });
+
+    const areaMenuItems = [
+      { value: "Generate Action Plan", label: 'Generate Action Plan', customPrompt: 'You are going to display an action plan for REALTOR clients designed into the first page of a webapp called TheGenie.  Always write in 2nd person. Do not provide an introduction sentence. Instead, go straight into the breakdown. You will generate a full breakdown of their business, and a comprehensive marketing plan that provides an outlined step by step action plan to market their real estate business. You will generate 4 sections. Section 1 will be called The Breakdown, and it will discuss the agent\'s business based on the listing information given. The Breakdown section will also give an overall rank of the agent\'s business from A to F and provide a few suggestions on how they can increase this rank. Section 2 will be called Your Outline, and will include an outline of all the various steps needed to increase their ranking. Section 3 will be called The Plan, and will feature a comprehensive step by step breakdown of initiating a marketing plan based on the outline and information provided. Section 4 will be called The Recap, and will summarize suggestions along with a message to reach out to their title partner for additional help. Always be comprehensive when generating the 4 sections. Do not include anything else in your response other than the 4 sections, written as detailed prior.' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this area", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this area", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this area", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+    ];
+
+    const areaButtons = areaMenuItems.map((option, index) => {
+      return (
+        <button key={index} value={option.value} onClick={(e) => {
+          this.setState({ messageInput: e.target.value }, () => {
+            this.addMessage("user", option.customPrompt)
+            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            this.sendMessage(e);
+          });
+        }}>
+          {option.label}
+        </button>
+      );
+    });
+    
+    const copyToClipboard = (text) => {
+      const turndownService = new TurndownService();
+      const markdown = turndownService.turndown(text);
+      navigator.clipboard.writeText(markdown);
+    
+      // add animation to copy button
+      const copyButton = document.querySelector('.copy-icon');
+      this.setState({showCopyNotification: true});
+      copyButton.classList.add('copied');
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        this.setState({showCopyNotification: false});
+      }, 2500);
+    };
+
 
     const messages = this.state.displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
@@ -447,6 +566,11 @@ class App extends Component {
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
+          {msg.role === "assistant" && (
+            <button className='copy-icon' onClick={() => copyToClipboard(content)}>
+              {this.state.showCopyNotification ? 'Copied!' : 'Copy'}
+            </button>
+          )}
         </div>
       );
     });
@@ -476,10 +600,10 @@ class App extends Component {
               disabled={isUserIdInputDisabled}
               type="submit">Save</button>
           </form>
-          {this.state.agentProfileUserId && this.state.listings.length > 0 && (
+          {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
             <div className='listingSelectBox'>
               <label>Select Listing:</label>
-              <select ref={this.selectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
+              <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
                 <option value="">-- Select Listing --</option>
                 {this.state.listings.map((listing, index) => (
                   <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
@@ -489,12 +613,28 @@ class App extends Component {
               </select>
             </div>
           )}
+          {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
+            <div className='areaSelectBox'>
+              <label>Select Area:</label>
+              <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled} onChange={this.userSelectedArea}>
+                <option value="">-- Select Area --</option>
+                {this.state.areas.map((area, index) => (
+                  <option key={index} value={area.areaId}>
+                    {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
-          {messages.length > 0 ? (
-            messages
+          {messages.length > 0 && this.state.context_id === 0 ? messages : "Select a Listing from the Dropdown"}
+        </div>
+        <div id="quick-actions">
+          {this.state.context_id === 0 ? (
+            <div className='menu-buttons'>{listingButtons}</div>
           ) : (
-            <div className='menu-buttons'>{buttons}</div>
+            <div className='menu-buttons'>{areaButtons}</div>
           )}
         </div>
         <div id="chat-input">
@@ -509,6 +649,9 @@ class App extends Component {
             <button type="submit">Send</button>
             <button onClick={this.resetChat}>Reset Chat</button>
           </form>
+        </div>
+        <div id="footer">
+          Copyright © 2023 1parkplace, Inc. All rights reserved. - TheGenie.ai - US Patent #: 10,713,325
         </div>
       </div>
     );

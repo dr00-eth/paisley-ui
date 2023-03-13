@@ -6,14 +6,15 @@ import { parse, Renderer } from 'marked';
 class App extends Component {
   constructor(props) {
     super(props);
+    const searchParams = new URLSearchParams(window.location.search);
     this.state = {
       messages: [],
       displayMessages: [],
       messageInput: '',
       connection_id: '',
       context_id: 0,
-      agentProfileUserId: '',
-      isUserIdInputDisabled: false,
+      agentProfileUserId: searchParams.get('agentProfileUserId') || '',
+      isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isLoading: false,
       selectedListingMlsID: '',
@@ -42,6 +43,9 @@ class App extends Component {
           .then(data => {
             const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
             this.setState({ messages: messages });
+            if (this.state.agentProfileUserId) {
+              this.getAgentProfile();
+            }
           })
           .catch(error => console.error(error));
       });
@@ -145,7 +149,8 @@ class App extends Component {
       .then(response => response.json())
       .then(data => {
         const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages, displayMessages: [], isUserIdInputDisabled: false, agentProfileUserId: 0 });
+        this.setState({ messages: messages, displayMessages: [] });
+        this.getAgentProfile();
         this.hideLoading();
       })
       .catch(error => {
@@ -288,7 +293,48 @@ class App extends Component {
       const areaStatPrompt = areaStatsPrompts.join('\n');
 
       await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
-      messages.push({ role: "assistant", content: assistantPrompt });
+      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
+
+      await this.addMessage("user", areaStatPrompt);
+      messages.push({ role: "user", content: areaStatPrompt });
+    }
+    else {
+      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
+      const areaStatsptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zipCode: listingInfo.zip, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
+      }
+      const statsResults = await fetch(areaStatsApi, areaStatsptions);
+      const { statistics } = await statsResults.json();
+
+      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
+      const areaNameOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: this.state.agentProfileUserId, consumer: 0 })
+      }
+      const nameResults = await fetch(areaNameApi, areaNameOptions);
+      const { areaName } = await nameResults.json();
+
+      const areaStatsPrompts = [];
+      areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
+
+      for (const lookback of statistics) {
+        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+
+        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
+
+        if (propTypeStats.length > 0) {
+          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
+          const statistics = propTypeStats[0].statistics;
+          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+        }
+      }
+      const areaStatPrompt = areaStatsPrompts.join('\n');
+
+      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
+      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
 
       await this.addMessage("user", areaStatPrompt);
       messages.push({ role: "user", content: areaStatPrompt });
@@ -299,9 +345,12 @@ class App extends Component {
   }
 
   async getAgentProfile(event) {
-    event.preventDefault();
+    if (event) {
+      event.preventDefault();
+    }
+    const userID = event ? event.target[0].value : this.state.agentProfileUserId;
     this.showLoading();
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${event.target[0].value}`;
+    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
     const requestOptions = {
       method: 'POST',
       headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
@@ -345,16 +394,41 @@ class App extends Component {
   }
 
   render() {
+    const { isUserIdInputDisabled } = this.state;
     const contextOptions = [
       { value: 0, label: 'Listing Marketing' },
       { value: 1, label: 'Area Marketing' },
     ];
-    const { isUserIdInputDisabled } = this.state;
+
     const dropdownItems = contextOptions.map((option, index) => {
       return (
         <option key={index} value={option.value}>
           {option.label}
         </option>
+      );
+    });
+
+    const menuItems = [
+      { value: "Generate Action Plan", label: 'Generate Action Plan', customPrompt: 'You are going to display an action plan for REALTOR clients designed into the first page of a webapp called TheGenie.  Always write in 2nd person. Do not provide an introduction sentence. Instead, go straight into the breakdown. You will generate a full breakdown of their business, and a comprehensive marketing plan that provides an outlined step by step action plan to market their real estate business. You will generate 4 sections. Section 1 will be called The Breakdown, and it will discuss the agent\'s business based on the listing information given. The Breakdown section will also give an overall rank of the agent\'s business from A to F and provide a few suggestions on how they can increase this rank. Section 2 will be called Your Outline, and will include an outline of all the various steps needed to increase their ranking. Section 3 will be called The Plan, and will feature a comprehensive step by step breakdown of initiating a marketing plan based on the outline and information provided. Section 4 will be called The Recap, and will summarize suggestions along with a message to reach out to their title partner for additional help. Always be comprehensive when generating the 4 sections. Do not include anything else in your response other than the 4 sections, written as detailed prior.' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this listing", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this listing", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+      { value: "Generate Facebook Copy For this listing", label: 'Generate Facebook Copy', customPrompt: 'CUSTOM PROMPT OUTPUT GOES HERE' },
+    ];
+
+    const buttons = menuItems.map((option, index) => {
+      return (
+        <button key={index} value={option.value} onClick={(e) => { 
+          this.setState({ messageInput: e.target.value }, () => { 
+            this.addMessage("user", option.customPrompt)
+            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            this.sendMessage(e); 
+          }); 
+          }}>
+          {option.label}
+        </button>
       );
     });
 
@@ -366,11 +440,11 @@ class App extends Component {
           className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"}`}
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
-          <div className="message" dangerouslySetInnerHTML={{__html: content}}></div>
+          <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
         </div>
       );
     });
-    
+
     return (
       <div className="App">
         <div id="loading-container" style={{ display: this.state.isLoading ? 'flex' : 'none' }}>
@@ -401,7 +475,7 @@ class App extends Component {
               <label>Select Listing:</label>
               <select className='Content-dropdown' disabled={this.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
                 <option value="">-- Select Listing --</option>
-                {this.state.listings.map((listing,index) => (
+                {this.state.listings.map((listing, index) => (
                   <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
                     {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber}
                   </option>
@@ -414,7 +488,7 @@ class App extends Component {
           {messages.length > 0 ? (
             messages
           ) : (
-            <p>No messages yet</p>
+            <div className='menu-buttons'>{buttons}</div>
           )}
         </div>
         <div id="chat-input">

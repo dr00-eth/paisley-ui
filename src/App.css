@@ -121,6 +121,11 @@ button {
   margin-right: 5px;
 }
 
+.menu-buttons {
+  display: inline-block;
+  padding-right: 0.5rem;
+}
+
 #loading-container {
   align-items: center;
   justify-content: center;

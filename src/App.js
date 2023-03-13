@@ -90,6 +90,7 @@ class App extends Component {
   }
 
   handleMessage(data) {
+    console.log("handleMessage hit");
     const messages = this.state.messages.slice();
     const displayMessages = this.state.displayMessages.slice();
     const latestMsg = messages[messages.length - 1];
@@ -108,6 +109,7 @@ class App extends Component {
 
   sendMessage(event) {
     event.preventDefault();
+    console.log("sendMessage hit");
     if (this.state.messageInput) {
       const messages = [...this.state.messages];
       const displayMessages = [...this.state.displayMessages];
@@ -506,7 +508,7 @@ class App extends Component {
       { value: "Create Postcard Design Specifications", label: 'Create Postcard Design Specifications', customPrompt: 'You will create design specifications for a postcard that showcases the selected listing. Use the information provided to you to create a visually appealing and informative postcard that highlights the propertys key features, amenities, and location. Include details such as the dimensions of the postcard, color scheme, typography, images, and any other relevant design elements. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Take things step-by-step. After you are done, ask the user if they would like to make any changes or additions to the postcard design specifications.' },
       { value: "Create Flyer Design Specifications", label: 'Create Flyer Design Specifications', customPrompt: 'You will create design specifications for a flyer that showcases the selected listing. Use the information provided to you to create a visually appealing and informative flyer that highlights the propertys key features, amenities, and location. Include details such as the dimensions of the flyer, color scheme, typography, images, and any other relevant design elements. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Take things step-by-step. After you are done, ask the user if they would like to make any changes or additions to the flyer design specifications.' },
       { value: "Create Facebook Image Design Specifications", label: 'Create Facebook Image Design Specifications', customPrompt: 'You will create design specifications for a Facebook image that showcases the selected listing. Use the information provided to you to create a visually appealing and informative Facebook image that highlights the propertys key features, amenities, and location. Include details such as the dimensions of the image, color scheme, typography, images, and any other relevant design elements. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Take things step-by-step. After you are done, ask the user if they would like to make any changes or additions to the Facebook image design specifications.' },
-      
+
     ];
 
     const listingButtons = listingMenuItems.map((option, index) => {
@@ -546,19 +548,19 @@ class App extends Component {
         </button>
       );
     });
-    
+
     const copyToClipboard = (text) => {
       const turndownService = new TurndownService();
       const markdown = turndownService.turndown(text);
       navigator.clipboard.writeText(markdown);
-    
+
       // add animation to copy button
       const copyButton = document.querySelector('.copy-icon');
-      this.setState({showCopyNotification: true});
+      this.setState({ showCopyNotification: true });
       copyButton.classList.add('copied');
       setTimeout(() => {
         copyButton.classList.remove('copied');
-        this.setState({showCopyNotification: false});
+        this.setState({ showCopyNotification: false });
       }, 2500);
     };
 
@@ -604,10 +606,10 @@ class App extends Component {
             />
             {isUserIdInputDisabled === false && (
               <button
-              disabled={isUserIdInputDisabled}
-              type="submit">Save</button>
+                disabled={isUserIdInputDisabled}
+                type="submit">Save</button>
             )}
-            
+
           </form>
           {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
             <div className='listingSelectBox'>
@@ -637,8 +639,8 @@ class App extends Component {
           )}
         </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
-          {messages.length === 0 && this.state.context_id === 0 ? "Select a Listing from the Dropdown" : messages }
-          {messages.length === 0 && this.state.context_id === 1 ? "Select an Area from the Dropdown" : messages}
+          {messages.length === 0 && this.state.context_id === 0 ? "Select a Listing from the Dropdown" :
+            (messages.length === 0 && this.state.context_id === 1 ? "Select an Area from the Dropdown" : messages)}
         </div>
         <div id="quick-actions">
           {this.state.context_id === 0 ? (

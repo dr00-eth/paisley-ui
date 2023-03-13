@@ -493,7 +493,7 @@ class App extends Component {
       );
     });
 
-    const menuItems = [
+    const listingMenuItems = [
       { value: "Generate Action Plan", label: 'Generate Action Plan', customPrompt: 'You are going to display an action plan for REALTOR clients designed into the first page of a webapp called TheGenie.  You will take things step-by-step. Always write in 2nd person. Do not provide an introduction sentence. Instead, go straight into the plan. The action plan will have 4 sections. The first section is called The Breakdown and it will breakdown the current listing selected. The breakdown will have stats on the listing, any key features to highlight during marketing, information on the zip code, and any other pertinent details about the listing that the user should know for marketing. The next section is called The Gameplan. The Gameplan will use information from the breakdown to come up with a 3 Channel marketing approach. In The Gameplan, you will layout the channel for marketing, the potential targets, potential deliverables, and a brief description of what the campaign would look like, as well as any pros and cons to it. Be unique and create campaigns tailored to the location of the listing. The final section will be The Recap, and it will provide step by step instructions on how to implement each channel. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Remember, take things step-by-step. After you are done, ask the user if they would like to go into more detail about any specific campaign and continue the conversation from there.' },
       { value: "Write A Blog Post", label: 'Write A Blog Post', customPrompt: 'You will create a custom blog post about the listing and include information about the zip code the listing is in based on the information given to you. Do not provide an introduction sentence. Instead, go straight into the blog. Be comprehensive and light hearted in tone. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Take things step-by-step. After you are done, ask the user if they would like to change the tone, content, or anything else about the blog and follow their direction.' },
       { value: "Compose A Neighborhood Guide", label: 'Compose A Neighborhood Guide', customPrompt: 'Use the information provided to you about the area the listing is located in. Do not provide an introduction sentence. Instead, go straight into the guide. You are given zip code data, but can also use specific neighborhood information. Do not use any hard data outside of what is given to you. Be comprehensive with different sections laid out such as hot spots, key data points, things to do, and anything else that would be good in a guide for people looking to move to the area. Make sure to incorporate a call to action to reach out to the user about their new listing, pending, or sold property that is selected. Display in markdown format with each section being h1, each numbered point within each section and bullet points under each number. Take things step-by-step. After you are done, ask the user if they would like to change the tone, content, or anything else about the neighborhood guide and follow their direction.' },
@@ -594,7 +594,7 @@ class App extends Component {
         </header>
         <div className='form-controls'>
           <form className='user-form' onSubmit={this.getAgentProfile}>
-            <label>User ID:</label>
+            <label>User ID </label>
             <input
               type="text"
               value={this.state.agentProfileUserId}
@@ -602,13 +602,16 @@ class App extends Component {
               onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
               disabled={isUserIdInputDisabled}
             />
-            <button
+            {isUserIdInputDisabled === false && (
+              <button
               disabled={isUserIdInputDisabled}
               type="submit">Save</button>
+            )}
+            
           </form>
           {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
             <div className='listingSelectBox'>
-              <label>Select Listing:</label>
+              <label>Select Listing </label>
               <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
                 <option value="">-- Select Listing --</option>
                 {this.state.listings.map((listing, index) => (
@@ -621,7 +624,7 @@ class App extends Component {
           )}
           {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
             <div className='areaSelectBox'>
-              <label>Select Area:</label>
+              <label>Select Area </label>
               <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled} onChange={this.userSelectedArea}>
                 <option value="">-- Select Area --</option>
                 {this.state.areas.map((area, index) => (
@@ -634,7 +637,8 @@ class App extends Component {
           )}
         </div>
         <div id="chat-display" ref={this.chatDisplayRef}>
-          {messages.length > 0 && this.state.context_id === 0 ? messages : "Select a Listing from the Dropdown"}
+          {messages.length === 0 && this.state.context_id === 0 ? "Select a Listing from the Dropdown" : messages }
+          {messages.length === 0 && this.state.context_id === 1 ? "Select an Area from the Dropdown" : messages}
         </div>
         <div id="quick-actions">
           {this.state.context_id === 0 ? (

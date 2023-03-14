@@ -680,7 +680,7 @@ class App extends Component {
             <div className='menu-buttons'>{listingButtons}</div>
           ) : (this.state.context_id === 1 ? (
             <div className='menu-buttons'>{areaButtons}</div>
-          ) : (this.state.context_id === 2 ?
+          ) : (this.state.context_id === 3 ?
             <div className='menu-buttons'>{followupButtons}</div>
             : ''))}
 

@@ -90,6 +90,9 @@ class App extends Component {
       .then(data => {
         const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
         this.setState({ messages: messages });
+        if (newContextId === 2 || newContextId === 3) {
+          this.getAgentProfile();
+        }
       })
       .catch(error => console.error(error));
   }
@@ -295,6 +298,7 @@ class App extends Component {
     await this.addMessage("user", areaStatPrompt);
     messages.push({ role: "user", content: areaStatPrompt });
     this.setState({ messages });
+    console.log(messages);
   }
 
   async getPropertyProfile(mlsId, mlsNumber) {
@@ -475,6 +479,7 @@ class App extends Component {
     this.getUserListings();
     this.getUserAreas();
     this.hideLoading();
+    console.log(this.state.messages);
   }
 
   async addMessage(role, message) {
@@ -492,6 +497,8 @@ class App extends Component {
     const contextOptions = [
       { value: 0, label: 'Listing Marketing' },
       { value: 1, label: 'Area Marketing' },
+      { value: 2, label: 'RE Coaching' },
+      { value: 3, label: 'Follow Up' },
     ];
 
     const dropdownItems = contextOptions.map((option, index) => {
@@ -541,6 +548,29 @@ class App extends Component {
     ];
 
     const areaButtons = areaMenuItems.map((option, index) => {
+      return (
+        <button key={index} value={option.value} onClick={(e) => {
+          this.setState({ messageInput: e.target.value }, () => {
+            this.addMessage("user", option.customPrompt)
+            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            this.sendMessage(e);
+          });
+        }}>
+          {option.label}
+        </button>
+      );
+    });
+
+    const followupMenuItems = [
+      { value: "Quick Gameplan", label: 'Quick Gameplan', customPrompt: 'You are going to create a quick follow up gameplan. This will be a follow up plan that is specific to a particular lead. Please ask any pertinent questions about the lead information, how they became leads, what step of the process they are in, any deliverables they have received, and anything else the best follow up real estate agent assistant would ask. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+      { value: "1 Month Plan", label: '1 Month Plan', customPrompt: 'You are going to create a 1 month follow up gameplan. Please ask any pertinent questions about the lead information, how they became leads, what step of the process they are in, any deliverables they have received, and anything else the best follow up real estate agent assistant would ask. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+      { value: "3 Month Plan", label: '3 Month Plan', customPrompt: 'You are going to create a 3 month follow up gameplan. Please ask any pertinent questions about the lead information, how they became leads, what step of the process they are in, any deliverables they have received, and anything else the best follow up real estate agent assistant would ask. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+      { value: "6 Month Plan", label: '6 Month Plan', customPrompt: 'You are going to create a 6 month follow up gameplan. Please ask any pertinent questions about the lead information, how they became leads, what step of the process they are in, any deliverables they have received, and anything else the best follow up real estate agent assistant would ask. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+      { value: "9 Month Plan", label: '9 Month Plan', customPrompt: 'You are going to create a 9 month follow up gameplan. Please ask any pertinent questions about the lead information, how they became leads, what step of the process they are in, any deliverables they have received, and anything else the best follow up real estate agent assistant would ask. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+      { value: "Long Term Plan", label: 'Long Term Plan', customPrompt: 'You are going to create a long term follow up gameplan. Ask questions like what type of channels are preferable, and how many times they want to target each lead they have. Ask anything relevant to long term follow up planning. Once you have the information you need, please create the outline for the plan. Be comprehensive and use markdown format to organize. Afterwards, ask which section to break down even further and always be comprehensive and detailed in all of your responses. Make sure to use information you received from prior questioning and the information given to you.' },
+    ];
+
+    const followupButtons = followupMenuItems.map((option, index) => {
       return (
         <button key={index} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, () => {
@@ -638,13 +668,18 @@ class App extends Component {
         </header>
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown above" :
-            (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown above" : messages)}
+            (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown above" :
+            (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" : 
+            (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
         </div>
         <div id="quick-actions">
           {this.state.context_id === 0 ? (
             <div className='menu-buttons'>{listingButtons}</div>
-          ) : (
+          ) : this.state.context_id === 1 ? (
             <div className='menu-buttons'>{areaButtons}</div>
+           )  : (this.state.context_id === 2 ? 
+              <div className='menu-buttons'>{followupButtons}</div>
+            : ''
           )}
         </div>
         <div id="chat-input">

@@ -8,17 +8,18 @@ html, body, #root {
 body {
   margin: 0;
   padding: 0;
-  background-color: #f5f5f5;
+  background-color: #333;
 }
 
 .App {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 header {
-  background-color: #1B3448;
+  background-color: #333;
   color: white;
   padding: 0.5rem 1.5rem;
 }
@@ -26,21 +27,29 @@ header {
 .App-title {
   margin: 0;
   margin-bottom: 1rem;
+  margin-top: 1rem;
   display: inline-block;
 }
 
 .Content-dropdown {
   padding: 0.5rem;
   font-size: 1rem;
-  border: 2px solid #333;
+  border: 0px;
   border-radius: 0.25rem;
-  background-color: #f5f5f5;
+  color: white;
+  background-color: #333;
+  margin-right: 0.5rem;
+  box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #444, inset -5px -5px 10px #222;
 }
 
 
 .user-form {
   font-size: 1rem;
   float: right;
+}
+
+.user-form > label {
+  margin-right: 0.5rem;
 }
 
 .form-controls {
@@ -53,19 +62,37 @@ header {
   margin: 1rem;
   padding: 1rem;
   overflow-y: scroll;
-  background-color: #272b34;
+  background-color: #333;
   color: #fff;
   border-radius: 10px;
   position: relative;
   padding-bottom: 3.5rem;
+  box-sizing: content-box;
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 3px #444;
+  border-radius: 10px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 10px;
 }
 
 .chat-bubble {
   position: relative;
   margin: 10px 0;
-  padding: 10px;
+  padding: 15px;
   border-radius: 10px;
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #222, inset -5px -5px 10px #444;
 }
 
 .user {
@@ -91,8 +118,10 @@ header {
   position: absolute;
   bottom: 0;
   right: 0;
-  color: #333;
-  background-color: white;
+  color: #fff;
+  width: 100px;
+  background-color: #333;
+  box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #444, inset -5px -5px 10px #222;
   border-top-left-radius: 10px;
   animation: fade-in 2.5s;
 }
@@ -125,6 +154,7 @@ header {
   justify-content: center;
   width: 100%;
   margin-bottom: 1rem;
+  color: white;
 }
 
 #quick-actions {
@@ -152,35 +182,63 @@ header {
 #chat-input input[type="text"] {
   width: 80%;
   margin-right: 10px;
+  border:0px;
+  color: white;
+  height: 50px;
+}
+
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: #fff;
+  opacity: 1; /* Firefox */
+}
+
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  color: #fff;
+}
+
+::-ms-input-placeholder { /* Microsoft Edge */
+  color: #fff;
 }
 
 input[type="text"] {
   flex: 1;
   padding: 10px;
   font-size: 16px;
-  border: 2px solid #333;
+  border: 0px;
   border-radius: 5px;
-  background-color: #f5f5f5;
+  background-color: #333;
+  color: white;
+  box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #444, inset -5px -5px 10px #222;
   margin-right: 10px;
   font-family: 'Rubik', sans-serif;
 }
 
 button {
-  padding: 10px;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  background-color: #2c3e50;
-  color: white;
-  cursor: pointer;
-  margin-right: 5px;
-  display: inline-block;
-  font-family: 'Rubik', sans-serif;
+	width: 150px;
+	height: 50px;
+	cursor: pointer;
+	background: #333;
+	margin: 10px;
+	border: none;
+	border-radius: 10px;
+	box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #444, inset -5px -5px 10px #222;
+	color: #fff;
+	font-size: 12px;
+}
+
+button:hover {
+	box-shadow: -5px -5px 15px #444, 5px 5px 15px #222, inset 5px 5px 10px #222, inset -5px -5px 10px #444;
+	font-size: 11px;
+	transition: 500ms;
+}
+
+button:focus {
+	outline: none;
 }
 
 .menu-buttons > button {
   margin-bottom: 0.5rem;
-  width: 9%;
+  width: 8%;
 }
 
 
@@ -245,6 +303,23 @@ button {
   input[type="text"],
   button {
     font-size: 0.7rem;
+    width: 65px;
+  }
+  #chat-input {
+    padding: 0.5rem;
+  }
+  #chat-input form {
+    display: block;
+  }
+  .menu-buttons > button {
+    margin-bottom: 0.5rem;
+    width: 20%;
+    height: 20px;
+}
+  #footer span {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    font-size: 8px;
   }
   /* Reduce chat display height to fit smaller screens */
   #chat-display {

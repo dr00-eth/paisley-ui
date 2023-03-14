@@ -46,8 +46,6 @@ class App extends Component {
     });
     this.socket.on('message', this.handleMessage);
     this.socket.on('emit_event', (data) => {
-      console.log('Emit event received');
-      console.log(data);
       // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
     });

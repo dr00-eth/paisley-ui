@@ -29,6 +29,8 @@ header {
   margin-bottom: 1rem;
   margin-top: 1rem;
   display: inline-block;
+  color: #93f071;
+	text-shadow: 0px 0px 10px #93f071;
 }
 
 .Content-dropdown {
@@ -165,6 +167,11 @@ header {
   padding: 0rem 1rem;
 }
 
+.menu-buttons button {
+  color: #A350FC;
+	text-shadow: 0px 0px 10px #A350FC;
+}
+
 .menu-buttons {
   display: flex;
   justify-content: center;
@@ -292,6 +299,8 @@ button:focus {
   }
   .App-title {
     font-size: 1rem;
+    color: #93f071;
+	  text-shadow: 0px 0px 10px #93f071;
   }
   .Content-dropdown,
   .user-form {

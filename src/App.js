@@ -632,8 +632,8 @@ class App extends Component {
           )}
         </header>
         <div id="chat-display" ref={this.chatDisplayRef}>
-          {messages.length === 0 && this.state.context_id === 0 ? "Select a Listing from the Dropdown" :
-            (messages.length === 0 && this.state.context_id === 1 ? "Select an Area from the Dropdown" : messages)}
+          {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown above" :
+            (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown above" : messages)}
         </div>
         <div id="quick-actions">
           {this.state.context_id === 0 ? (

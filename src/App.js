@@ -36,13 +36,18 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
+    //this.apiServerUrl = 'http://127.0.0.1:8008'
   }
 
   componentDidMount() {
-    this.socket = io(this.apiServerUrl);
+    this.socket = io(this.apiServerUrl, {
+      pingInterval: 25000, //25 seconds
+      pingTimeout: 60000 //60 seconds
+    });
     this.socket.on('message', this.handleMessage);
     this.socket.on('emit_event', (data) => {
       console.log('Emit event received');
+      console.log(data);
       // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
     });

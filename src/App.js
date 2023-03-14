@@ -41,6 +41,11 @@ class App extends Component {
   componentDidMount() {
     this.socket = io(this.apiServerUrl);
     this.socket.on('message', this.handleMessage);
+    this.socket.on('emit_event', (data) => {
+      console.log('Emit event received');
+      // call the callback function with the data provided by the server
+      this.socket.emit('callback_event', data.callback_data);
+    });
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
@@ -247,6 +252,7 @@ class App extends Component {
     this.setState({
       selectedAreaId: areaId
     });
+    console.log(this.state.messages);
   }
 
   async getAreaStatisticsPrompt(areaId) {
@@ -288,6 +294,7 @@ class App extends Component {
 
     await this.addMessage("user", areaStatPrompt);
     messages.push({ role: "user", content: areaStatPrompt });
+    this.setState({ messages });
   }
 
   async getPropertyProfile(mlsId, mlsNumber) {

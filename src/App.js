@@ -674,18 +674,18 @@ class App extends Component {
         <div id="chat-display" ref={this.chatDisplayRef}>
           {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown above" :
             (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown above" :
-            (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" : 
-            (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
+              (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
+                (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
         </div>
         <div id="quick-actions">
           {this.state.context_id === 0 ? (
             <div className='menu-buttons'>{listingButtons}</div>
-          ) : this.state.context_id === 1 ? (
+          ) : (this.state.context_id === 1 ? (
             <div className='menu-buttons'>{areaButtons}</div>
-           )  : (this.state.context_id === 2 ? 
-              <div className='menu-buttons'>{followupButtons}</div>
-            : ''
-          )}
+          ) : (this.state.context_id === 2 ?
+            <div className='menu-buttons'>{followupButtons}</div>
+            : ''))}
+
         </div>
         <div id="chat-input">
           <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>

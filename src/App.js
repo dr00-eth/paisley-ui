@@ -467,7 +467,7 @@ class App extends Component {
     const website = agentInfo.marketingSettings.profile.websiteUrl;
     const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber;
     const about = agentInfo.marketingSettings.profile.about;
-    const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url;
+    const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url ?? '';
     const messages = this.state.messages.slice();
 
     const assistantPrompt = 'In order you assist you in the best possible way, can you provide me with more information about yourself and any relevant details I might need to optimize my content suggestions?';

@@ -72,6 +72,7 @@ body {
   margin-bottom: 1rem;
   box-sizing: border-box;
   align-items: center;
+  text-align: center;
 }
 
 .sidebar-section label {
@@ -452,6 +453,7 @@ button:focus {
 @media (min-width: 768px) and (max-width: 1024px) {
   .sidebar {
     width: 280px;
+    overflow-y: scroll;
   }
 
   .sidebar-title,
@@ -480,8 +482,6 @@ button:focus {
     margin-bottom: 0.5rem;
     width: 100%;
   }
-
-
   
 
   #chat-input form {
@@ -530,6 +530,7 @@ button:focus {
 @media (max-width: 767px) {
   .sidebar {
     width: 250px;
+    overflow-y: scroll;
   }
 
   .sidebar-title,

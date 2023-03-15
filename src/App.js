@@ -537,9 +537,9 @@ class App extends Component {
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
         <button key={index} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, () => {
-            this.addMessage("user", option.customPrompt)
-            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+          this.setState({ messageInput: e.target.value }, async () => {
+            await this.addMessage("user", option.customPrompt)
+            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
             this.sendMessage(e);
           });
         }}>
@@ -564,9 +564,9 @@ class App extends Component {
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
         <button key={index} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, () => {
-            this.addMessage("user", option.customPrompt)
-            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+          this.setState({ messageInput: e.target.value }, async () => {
+            await this.addMessage("user", option.customPrompt)
+            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
             this.sendMessage(e);
           });
         }}>
@@ -588,9 +588,9 @@ class App extends Component {
     const followupButtons = followupMenuItems.map((option, index) => {
       return (
         <button key={index} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, () => {
-            this.addMessage("user", option.customPrompt)
-            this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+          this.setState({ messageInput: e.target.value }, async () => {
+            await this.addMessage("user", option.customPrompt)
+            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
             this.sendMessage(e);
           });
         }}>

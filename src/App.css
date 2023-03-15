@@ -143,6 +143,11 @@ header {
   box-sizing: border-box; /* Add this to include padding and border in the width calculation */
 }
 
+.Content-dropdown option,
+.Context-dropdown option {
+  color: black;
+}
+
 .Context-dropdown {
   background-color: transparent;
   border: 0;

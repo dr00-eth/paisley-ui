@@ -269,6 +269,41 @@ header {
   white-space: pre-wrap;
 }
 
+.message table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 10px 0;
+  color: var(--text-color);
+}
+
+.message thead {
+  background-color: var(--secondary-color);
+}
+
+.message thead tr {
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.message th,
+.message td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.message tbody tr:nth-child(odd) {
+  background-color: var(--primary-color);
+}
+
+.message tbody tr:nth-child(even) {
+  background-color: var(--secondary-color);
+}
+
+.message tbody tr:hover {
+  background-color: rgba(74, 161, 209, 0.75); /* Adjusted primary-color with opacity */
+}
+
 .copy-icon {
   position: absolute;
   bottom: 0;

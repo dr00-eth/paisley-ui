@@ -510,7 +510,7 @@ class App extends Component {
       messages.push({ role: "user", content: areaStatPrompt });
     }
 
-    this.setState({ messages: messages, isUserListingSelectDisabled: true, selectedListingAddress: listingAddress });
+    this.setState({ messages: messages, selectedListingAddress: listingAddress });
   }
 
   async getAgentProfile(event) {
@@ -605,7 +605,7 @@ class App extends Component {
 
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
-        <button key={index} value={option.value} onClick={(e) => {
+        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -632,7 +632,7 @@ class App extends Component {
 
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
-        <button key={index} value={option.value} onClick={(e) => {
+        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -656,7 +656,7 @@ class App extends Component {
 
     const followupButtons = followupMenuItems.map((option, index) => {
       return (
-        <button key={index} value={option.value} onClick={(e) => {
+        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -739,7 +739,7 @@ class App extends Component {
               </form>
               {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
+                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled || this.state.incomingChatInProgress} onChange={this.userSelectedListing}>
                     <option value="">-- Select Listing --</option>
                     {this.state.listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
@@ -751,7 +751,7 @@ class App extends Component {
               )}
               {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
                 <div className='sidebar-section areaSelectBox'>
-                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled} onChange={this.userSelectedArea}>
+                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled || this.state.incomingChatInProgress} onChange={this.userSelectedArea}>
                     <option value="">-- Select Area --</option>
                     {this.state.areas.map((area, index) => (
                       <option key={index} value={area.areaId}>
@@ -780,7 +780,12 @@ class App extends Component {
                   (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
           </div>
           <div id="chat-input">
-            <select className='Context-dropdown' onChange={this.changeContext} value={this.state.context_id}>
+            <select 
+              className='Context-dropdown' 
+              onChange={this.changeContext} 
+              value={this.state.context_id}
+              disabled={this.state.isLoading || this.state.incomingChatInProgress}
+            >
               {dropdownItems}
             </select>
             <form onSubmit={this.sendMessage}>

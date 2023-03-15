@@ -41,7 +41,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  box-shadow: 2px 0 5px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
   padding-right: 1rem;
   overflow-y: auto;
 }
@@ -237,7 +237,7 @@ header {
   padding: 15px;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
 }
 
 .chat-bubble.assistant {
@@ -311,7 +311,7 @@ header {
   color: var(--text-color);
   width: 100px;
   background-color: var(--primary-color);
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
   border-top-left-radius: 10px px;
   animation: fade-in 2.5s;
 }
@@ -402,7 +402,7 @@ textarea {
   border-radius: 5px;
   background-color: var(--primary-color);
   color: var(--text-color);
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
   margin-right: 10px;
   font-family: "Rubik", sans-serif;
 }
@@ -433,7 +433,7 @@ input[type="text"] {
   border-radius: 5px;
   background-color: var(--primary-color);
   color: var(--text-color);
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
   margin-right: 10px;
   font-family: "Rubik", sans-serif;
 }
@@ -446,7 +446,7 @@ button {
   margin: 10px;
   border: none;
   border-radius: 10px;
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: 5px 5px 5px 3px var(--shadow-color);
   color: var(--text-color);
   font-size: 12px;
   transition: 500ms;

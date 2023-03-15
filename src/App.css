@@ -158,6 +158,11 @@ header {
   border-color: var(--secondary-color);
 }
 
+.Content-dropdown:-moz-focusring {
+  color: var(--secondary-color);
+  background-color: var(--text-color);
+}
+
 .user-form>label {
   margin-right: 0.5rem;
 }

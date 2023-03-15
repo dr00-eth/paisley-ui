@@ -37,14 +37,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "react-dotenv": {
-    "whitelist": [
-      "GENIE_UN",
-      "GENIE_PW"
-    ]
-  },
-  "devDependencies": {
-    "dotenv": "^16.0.3"
   }
 }

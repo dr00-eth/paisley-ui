@@ -154,6 +154,22 @@ header {
   box-sizing: border-box; /* Add this to include padding and border in the width calculation */
 }
 
+.agent-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-profile-image {
+  max-height: 120px;
+  border: 3px solid var(--accent-color);
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+  margin-bottom: 1rem; /* Add margin to separate the image from the h2 */
+}
+
 
 .Content-dropdown:focus {
   border-color: var(--secondary-color);
@@ -232,6 +248,14 @@ header {
 
 .message {
   margin: 5px 0;
+  overflow-wrap: break-word;
+}
+
+.message pre,
+.message code {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .copy-icon {
@@ -289,10 +313,8 @@ header {
   /* Add this property to prevent the footer from shrinking */
 }
 
-
 .menu-buttons button {
   color: var(--accent-color);
-  text-shadow: 0px 0px 10px var(--accent-color);
 }
 
 .menu-buttons {
@@ -320,6 +342,25 @@ header {
   color: var(--text-color);
   height: 50px;
 }
+
+textarea {
+  resize: none;
+  overflow: hidden;
+}
+
+.chat-input-textarea {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+  border: 0;
+  border-radius: 5px;
+  background-color: var(--primary-color);
+  color: var(--text-color);
+  box-shadow: 0 1px 3px var(--shadow-color);
+  margin-right: 10px;
+  font-family: "Rubik", sans-serif;
+}
+
 
 ::placeholder {
   /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -434,6 +475,9 @@ button:focus {
     margin-bottom: 0.5rem;
     width: 100%;
   }
+
+
+  
 
   #chat-input form {
     width: 100%;

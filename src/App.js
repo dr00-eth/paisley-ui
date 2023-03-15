@@ -22,6 +22,8 @@ class App extends Component {
       showCopyNotification: false,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
+      agentName: '',
+      agentProfileImage: '',
       listings: [],
       areas: []
     };
@@ -35,6 +37,7 @@ class App extends Component {
     this.userSelectedArea = this.userSelectedArea.bind(this);
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
+    this.textareaRef = React.createRef();
     this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
     //this.apiServerUrl = 'http://127.0.0.1:8008'
   }
@@ -464,6 +467,7 @@ class App extends Component {
     const website = agentInfo.marketingSettings.profile.websiteUrl;
     const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber;
     const about = agentInfo.marketingSettings.profile.about;
+    const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url;
     const messages = this.state.messages.slice();
 
     const assistantPrompt = 'In order you assist you in the best possible way, can you provide me with more information about yourself and any relevant details I might need to optimize my content suggestions?';
@@ -478,7 +482,7 @@ class App extends Component {
 
     messages.push({ role: "user", content: agentPrompt });
     console.log(messages);
-    this.setState({ messages: messages, isUserIdInputDisabled: true })
+    this.setState({ messages: messages, isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
     this.getUserListings();
     this.getUserAreas();
     this.hideLoading();
@@ -494,6 +498,12 @@ class App extends Component {
     }
     await fetch(streambotApi, addMsgRequestOptions);
   }
+
+  autoGrowTextarea = () => {
+    const textarea = this.textareaRef.current;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  };
 
   render() {
     const { isUserIdInputDisabled } = this.state;
@@ -633,18 +643,30 @@ class App extends Component {
             <div className="sidebar-section">
               <h1 className="sidebar-title">TheGenie - Paisley</h1>
               <form className='user-form' onSubmit={this.getAgentProfile}>
-                <input
-                  type="text"
-                  value={this.state.agentProfileUserId}
-                  placeholder="Enter AspNetUserID"
-                  onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
-                  disabled={isUserIdInputDisabled}
-                />
+                {isUserIdInputDisabled === false && (
+                  <input
+                    type="text"
+                    value={this.state.agentProfileUserId}
+                    placeholder="Enter AspNetUserID"
+                    onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
+                    disabled={isUserIdInputDisabled}
+                  />
+                )}
                 {isUserIdInputDisabled === false && (
                   <button
                     disabled={isUserIdInputDisabled}
                     type="submit">Save</button>
                 )}
+                <div className='agent-info'>
+                  {this.state.agentProfileImage !== '' && (
+                    <img className='agent-profile-image' alt={`Headshot of ${this.state.agentName}`} src={this.state.agentProfileImage} />
+                  )}
+                  {this.state.agentName !== '' && (
+                    <h2 className='sidebar-subtitle'>
+                      {this.state.agentName}
+                    </h2>
+                  )}
+                </div>
               </form>
               {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
@@ -693,13 +715,16 @@ class App extends Component {
               {dropdownItems}
             </select>
             <form onSubmit={this.sendMessage}>
-              <input
+              <textarea
                 value={this.state.messageInput}
+                ref={this.textareaRef}
+                className="chat-input-textarea"
                 onChange={(e) => this.setState({ messageInput: e.target.value })}
-                type="text"
+                onInput={this.autoGrowTextarea}
                 placeholder="Enter your message..."
                 disabled={this.state.isLoading}
               />
+
               <div className='button-group'>
                 <button type="submit">Send</button>
                 <button onClick={this.resetChat}>Reset Chat</button>

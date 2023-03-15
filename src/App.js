@@ -232,7 +232,7 @@ class App extends Component {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_id: this.state.agentProfileUserId, collection: 'just-listed-kit', mlsNumber: this.state.selectedListingMlsNumber, mlsID: this.state.selectedListingMlsID, saveDB: true, async: false }),
     }
-    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
       .then(response => response.json())
       .then(data => {
         const collection = data.result.collection;
@@ -258,7 +258,7 @@ class App extends Component {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_id: this.state.agentProfileUserId, areaID: this.state.selectedAreaId, collection: 'market-report-kit',  saveDB: true, async: false }),
     }
-    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
       .then(response => response.json())
       .then(data => {
         const collection = data.result.collection;

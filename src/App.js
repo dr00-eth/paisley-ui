@@ -25,7 +25,11 @@ class App extends Component {
       agentName: '',
       agentProfileImage: '',
       listings: [],
-      areas: []
+      areas: [],
+      listingKitUrl: '',
+      areaKitUrl: '',
+      selectedAreaName: '',
+      selectedListingAddress: '',
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
@@ -35,6 +39,8 @@ class App extends Component {
     this.resetChat = this.resetChat.bind(this);
     this.userSelectedListing = this.userSelectedListing.bind(this);
     this.userSelectedArea = this.userSelectedArea.bind(this);
+    this.generateListingKit = this.generateListingKit.bind(this);
+    this.generateAreaKit = this.generateAreaKit.bind(this);
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
@@ -219,6 +225,57 @@ class App extends Component {
       });
   }
 
+  generateListingKit() {
+    const displayMessages = [...this.state.displayMessages];
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_id: this.state.agentProfileUserId, collection: 'just-listed-kit', mlsNumber: this.state.selectedListingMlsNumber, mlsID: this.state.selectedListingMlsID, saveDB: true, async: false }),
+    }
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        const collection = data.result.collection;
+        console.log(collection);
+        const kitUrl = collection['collection-page'];
+        const comment = `Here is your personalized listing-focused kit for ${this.state.selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
+        setTimeout(() => {
+          displayMessages.push({role: "Assistant", content: comment});
+          this.setState({ displayMessages, listingKitUrl: kitUrl });
+        }, 30000);
+        
+      })
+      .catch(error => {
+        // handle error
+        console.error(error);
+      });
+  }
+
+  generateAreaKit() {
+    const displayMessages = [...this.state.displayMessages];
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_id: this.state.agentProfileUserId, areaID: this.state.selectedAreaId, collection: 'market-report-kit',  saveDB: true, async: false }),
+    }
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        const collection = data.result.collection;
+        console.log(collection);
+        const kitUrl = collection['collection-page'];
+        const comment = `Here is your personalized area-focused kit for ${this.state.selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
+        setTimeout(() => {
+          displayMessages.push({role: "Assistant", content: comment});
+          this.setState({ displayMessages, areaKitUrl: kitUrl });
+        }, 30000);
+      })
+      .catch(error => {
+        // handle error
+        console.error(error);
+      });
+  }
+
   getUserAreas() {
     const requestOptions = {
       method: 'POST',
@@ -250,6 +307,7 @@ class App extends Component {
       selectedListingMlsID: mlsID,
       selectedListingMlsNumber: mlsNumber
     });
+    this.generateListingKit();
   }
 
   async userSelectedArea(event) {
@@ -261,7 +319,7 @@ class App extends Component {
     this.setState({
       selectedAreaId: areaId
     });
-    console.log(this.state.messages);
+    this.generateAreaKit();
   }
 
   async getAreaStatisticsPrompt(areaId) {
@@ -286,8 +344,9 @@ class App extends Component {
 
     const areaStatsPrompts = [];
     areaStatsPrompts.push(`The following information is for ${areaName}.`);
-
+    
     for (const lookback of statistics) {
+      
       areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
       for (const propLookback of lookback.propertyTypeStatistics) {
@@ -303,7 +362,7 @@ class App extends Component {
 
     await this.addMessage("user", areaStatPrompt);
     messages.push({ role: "user", content: areaStatPrompt });
-    this.setState({ messages });
+    this.setState({ messages, selectedAreaName: areaName });
     console.log(messages);
   }
 
@@ -444,7 +503,7 @@ class App extends Component {
     }
 
     console.log(messages);
-    this.setState({ messages: messages, isUserListingSelectDisabled: true });
+    this.setState({ messages: messages, isUserListingSelectDisabled: true, selectedListingAddress: listingAddress });
   }
 
   async getAgentProfile(event) {
@@ -496,7 +555,12 @@ class App extends Component {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: role, message: message, user_id: this.state.connection_id, context_id: this.state.context_id })
     }
-    await fetch(streambotApi, addMsgRequestOptions);
+    try {
+      await fetch(streambotApi, addMsgRequestOptions);
+    } catch (error) {
+      console.error('Error in addMessage:', error);
+    }
+    
   }
 
   autoGrowTextarea = () => {

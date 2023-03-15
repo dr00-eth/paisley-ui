@@ -48,6 +48,7 @@ body {
   flex-grow: 1;
   padding: 1rem 0;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .sidebar-title {
@@ -159,8 +160,8 @@ header {
 }
 
 .Content-dropdown:-moz-focusring {
-  color: var(--secondary-color);
-  background-color: var(--text-color);
+  color: var(--text-color);
+  background-color: var(--primary-color);
 }
 
 .user-form>label {
@@ -302,6 +303,7 @@ header {
   width: 100%;
   flex-wrap: wrap;
   box-sizing: border-box;
+  color: var(--text-color);
 }
 
 #chat-input form {

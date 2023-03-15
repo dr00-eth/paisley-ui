@@ -676,7 +676,7 @@ class App extends Component {
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
             <div className='menu-buttons'>
-              {this.state.context_id === 0 ? listingButtons : (this.state.context_id === 1 ? areaButtons : (this.state.context_id === 3 ? followupButtons : ''))}
+              {this.state.context_id === 0 ? listingButtons : (this.state.context_id === 1 ? areaButtons : (this.state.context_id === 3 ? followupButtons : 'No quick actions available for this context'))}
             </div>
           </div>
         </div>

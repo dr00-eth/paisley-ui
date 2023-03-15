@@ -43,6 +43,7 @@ body {
   align-items: flex-start;
   box-shadow: 2px 0 5px var(--shadow-color);
   padding-right: 1rem;
+  overflow-y: auto;
 }
 
 .sidebar-top {

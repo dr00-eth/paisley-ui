@@ -30,6 +30,7 @@ class App extends Component {
       areaKitUrl: '',
       selectedAreaName: '',
       selectedListingAddress: '',
+      incomingChatInProgress: false,
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
@@ -41,6 +42,7 @@ class App extends Component {
     this.userSelectedArea = this.userSelectedArea.bind(this);
     this.generateListingKit = this.generateListingKit.bind(this);
     this.generateAreaKit = this.generateAreaKit.bind(this);
+    this.waitForIncomingChatToFinish = this.waitForIncomingChatToFinish.bind(this);
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
@@ -57,6 +59,11 @@ class App extends Component {
     this.socket.on('emit_event', (data) => {
       // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
+      this.setState({incomingChatInProgress: true});
+    });
+    this.socket.on('message_complete', () => {
+      this.setState({incomingChatInProgress: false});
+      this.textareaRef.current.focus();
     });
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
@@ -110,7 +117,6 @@ class App extends Component {
   }
 
   handleMessage(data) {
-    console.log("handleMessage hit");
     const messages = this.state.messages.slice();
     const displayMessages = this.state.displayMessages.slice();
     const latestMsg = messages[messages.length - 1];
@@ -129,7 +135,6 @@ class App extends Component {
 
   sendMessage(event) {
     event.preventDefault();
-    console.log("sendMessage hit");
     if (this.state.messageInput) {
       const messages = [...this.state.messages];
       const displayMessages = [...this.state.displayMessages];
@@ -187,7 +192,6 @@ class App extends Component {
         this.hideLoading();
         console.error(error)
       });
-    console.log(this.state.messages);
   }
 
 
@@ -225,8 +229,13 @@ class App extends Component {
       });
   }
 
+  async waitForIncomingChatToFinish() {
+    while (this.state.incomingChatInProgress) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
   generateListingKit() {
-    const displayMessages = [...this.state.displayMessages];
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,11 +245,12 @@ class App extends Component {
       .then(response => response.json())
       .then(data => {
         const collection = data.result.collection;
-        console.log(collection);
         const kitUrl = collection['collection-page'];
         const comment = `Here is your personalized listing-focused kit for ${this.state.selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-        setTimeout(() => {
-          displayMessages.push({role: "Assistant", content: comment});
+        setTimeout(async () => {
+          await this.waitForIncomingChatToFinish();
+          const displayMessages = [...this.state.displayMessages];
+          displayMessages.push({role: "assistant", content: comment});
           this.setState({ displayMessages, listingKitUrl: kitUrl });
         }, 30000);
         
@@ -252,7 +262,6 @@ class App extends Component {
   }
 
   generateAreaKit() {
-    const displayMessages = [...this.state.displayMessages];
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -262,11 +271,12 @@ class App extends Component {
       .then(response => response.json())
       .then(data => {
         const collection = data.result.collection;
-        console.log(collection);
         const kitUrl = collection['collection-page'];
         const comment = `Here is your personalized area-focused kit for ${this.state.selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-        setTimeout(() => {
-          displayMessages.push({role: "Assistant", content: comment});
+        setTimeout(async () => {
+          await this.waitForIncomingChatToFinish();
+          const displayMessages = [...this.state.displayMessages];
+          displayMessages.push({role: "assistant", content: comment});
           this.setState({ displayMessages, areaKitUrl: kitUrl });
         }, 30000);
       })
@@ -299,7 +309,6 @@ class App extends Component {
   async userSelectedListing(event) {
     event.preventDefault();
     const [mlsID, mlsNumber] = event.target.value.split('_');
-    console.log(`${mlsID}_${mlsNumber}`);
     this.showLoading();
     await this.getPropertyProfile(mlsID, mlsNumber);
     this.hideLoading();
@@ -363,7 +372,6 @@ class App extends Component {
     await this.addMessage("user", areaStatPrompt);
     messages.push({ role: "user", content: areaStatPrompt });
     this.setState({ messages, selectedAreaName: areaName });
-    console.log(messages);
   }
 
   async getPropertyProfile(mlsId, mlsNumber) {
@@ -502,7 +510,6 @@ class App extends Component {
       messages.push({ role: "user", content: areaStatPrompt });
     }
 
-    console.log(messages);
     this.setState({ messages: messages, isUserListingSelectDisabled: true, selectedListingAddress: listingAddress });
   }
 
@@ -540,12 +547,10 @@ class App extends Component {
     await this.addMessage("user", agentPrompt);
 
     messages.push({ role: "user", content: agentPrompt });
-    console.log(messages);
     this.setState({ messages: messages, isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
     this.getUserListings();
     this.getUserAreas();
     this.hideLoading();
-    console.log(this.state.messages);
   }
 
   async addMessage(role, message) {
@@ -785,13 +790,23 @@ class App extends Component {
                 className="chat-input-textarea"
                 onChange={(e) => this.setState({ messageInput: e.target.value })}
                 onInput={this.autoGrowTextarea}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage(e);
+                  }
+                }}
                 placeholder="Enter your message..."
-                disabled={this.state.isLoading}
+                disabled={this.state.isLoading || this.state.incomingChatInProgress}
               />
 
               <div className='button-group'>
-                <button type="submit">Send</button>
-                <button onClick={this.resetChat}>Reset Chat</button>
+                <button 
+                disabled={this.state.isLoading || this.state.incomingChatInProgress}
+                type="submit">Send</button>
+                <button 
+                disabled={this.state.isLoading || this.state.incomingChatInProgress}
+                onClick={this.resetChat}>Reset Chat</button>
               </div>
             </form>
           </div>

@@ -135,7 +135,6 @@ class App extends Component {
         role: 'user',
         content: this.state.messageInput
       });
-      this.setState({ messages, displayMessages, messageInput: '' });
 
       const requestOptions = {
         method: 'POST',
@@ -149,6 +148,7 @@ class App extends Component {
           }
         })
         .catch(error => console.error(error));
+        this.setState({ messages, displayMessages, messageInput: '' });
     }
   }
 

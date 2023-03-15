@@ -628,83 +628,87 @@ class App extends Component {
         <div id="loading-container" style={{ display: this.state.isLoading ? 'flex' : 'none' }}>
           <p>Loading...</p>
         </div>
-        <header className="App-header">
-          <h1 className="App-title">TheGenie - Paisley</h1>
-          <form className='user-form' onSubmit={this.getAgentProfile}>
-            <input
-              type="text"
-              value={this.state.agentProfileUserId}
-              placeholder="Enter AspNetUserID"
-              onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
-              disabled={isUserIdInputDisabled}
-            />
-            {isUserIdInputDisabled === false && (
-              <button
-                disabled={isUserIdInputDisabled}
-                type="submit">Save</button>
-            )}
-          </form>
-          {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
-            <div className='listingSelectBox'>
-              <label>Select Listing </label>
-              <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
-                <option value="">-- Select Listing --</option>
-                {this.state.listings.map((listing, index) => (
-                  <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
-                    {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
-                  </option>
-                ))}
-              </select>
+        <div className="sidebar">
+          <div className='sidebar-top'>
+            <div className="sidebar-section">
+              <h1 className="sidebar-title">TheGenie - Paisley</h1>
+              <form className='user-form' onSubmit={this.getAgentProfile}>
+                <input
+                  type="text"
+                  value={this.state.agentProfileUserId}
+                  placeholder="Enter AspNetUserID"
+                  onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
+                  disabled={isUserIdInputDisabled}
+                />
+                {isUserIdInputDisabled === false && (
+                  <button
+                    disabled={isUserIdInputDisabled}
+                    type="submit">Save</button>
+                )}
+              </form>
+              {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
+                <div className='sidebar-section listingSelectBox'>
+                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled} onChange={this.userSelectedListing}>
+                    <option value="">-- Select Listing --</option>
+                    {this.state.listings.map((listing, index) => (
+                      <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
+                        {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
+                <div className='sidebar-section areaSelectBox'>
+                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled} onChange={this.userSelectedArea}>
+                    <option value="">-- Select Area --</option>
+                    {this.state.areas.map((area, index) => (
+                      <option key={index} value={area.areaId}>
+                        {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
-          )}
-          {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
-            <div className='areaSelectBox'>
-              <label>Select Area </label>
-              <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled} onChange={this.userSelectedArea}>
-                <option value="">-- Select Area --</option>
-                {this.state.areas.map((area, index) => (
-                  <option key={index} value={area.areaId}>
-                    {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </header>
-        <div id="chat-display" ref={this.chatDisplayRef}>
-          {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown above" :
-            (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown above" :
-              (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
-                (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
-        </div>
-        <div id="quick-actions">
-          {this.state.context_id === 0 ? (
-            <div className='menu-buttons'>{listingButtons}</div>
-          ) : (this.state.context_id === 1 ? (
-            <div className='menu-buttons'>{areaButtons}</div>
-          ) : (this.state.context_id === 3 ?
-            <div className='menu-buttons'>{followupButtons}</div>
-            : ''))}
+          </div>
 
+          <div className="sidebar-section quick-actions">
+            <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
+            <div className='menu-buttons'>
+              {this.state.context_id === 0 ? listingButtons : (this.state.context_id === 1 ? areaButtons : (this.state.context_id === 3 ? followupButtons : ''))}
+            </div>
+          </div>
         </div>
-        <div id="chat-input">
-          <select className='Content-dropdown' onChange={this.changeContext} value={this.state.context_id}>
-            {dropdownItems}
-          </select>
-          <form onSubmit={this.sendMessage}>
-            <input
-              value={this.state.messageInput}
-              onChange={(e) => this.setState({ messageInput: e.target.value })}
-              type="text"
-              placeholder="Enter your message..."
-              disabled={this.state.isLoading}
-            />
-            <button type="submit">Send</button>
-            <button onClick={this.resetChat}>Reset Chat</button>
-          </form>
-        </div>
-        <div id="footer">
-          <span>Copyright © 2023 1parkplace, Inc. All rights reserved. - TheGenie.ai - US Patent #: 10,713,325</span>
+        <div className='main-content'>
+
+          <div id="chat-display" ref={this.chatDisplayRef}>
+            {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown to the left" :
+              (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown to the left" :
+                (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
+                  (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
+          </div>
+          <div id="chat-input">
+            <select className='Context-dropdown' onChange={this.changeContext} value={this.state.context_id}>
+              {dropdownItems}
+            </select>
+            <form onSubmit={this.sendMessage}>
+              <input
+                value={this.state.messageInput}
+                onChange={(e) => this.setState({ messageInput: e.target.value })}
+                type="text"
+                placeholder="Enter your message..."
+                disabled={this.state.isLoading}
+              />
+              <div className='button-group'>
+                <button type="submit">Send</button>
+                <button onClick={this.resetChat}>Reset Chat</button>
+              </div>
+            </form>
+          </div>
+          <div id="footer">
+            <span>Copyright © 2023 1parkplace, Inc. All rights reserved. - TheGenie.ai - US Patent #: 10,713,325</span>
+          </div>
         </div>
       </div>
     );

@@ -356,7 +356,7 @@ class App extends Component {
       selectedListingMlsNumber: mlsNumber
     });
     this.showLoading();
-    await this.getPropertyProfile(mlsID, mlsNumber);
+    await this.getPropertyProfile(mlsID, mlsNumber, this.state.selectedListingMlsNumber ? true : false);
     this.hideLoading();
     this.generateListingKit();
   }
@@ -365,7 +365,7 @@ class App extends Component {
     event.preventDefault();
     const areaId = event.target.value;
     this.showLoading();
-    await this.getAreaStatisticsPrompt(areaId);
+    await this.getAreaStatisticsPrompt(areaId, this.state.selectedAreaId ? true : false);
     this.hideLoading();
     this.setState({
       selectedAreaId: areaId
@@ -410,9 +410,8 @@ class App extends Component {
     if (!changeArea) {
       areaStatsPrompts.push(`The following information is for the ${areaName} area.`);
     } else {
-      areaStatsPrompts.push(`I want to change the This property is also located in ${areaName}, please use this information from now on and disregard the information I provided you earlier.`);
+      areaStatsPrompts.push(`I want to focus on a new area. Let's focus on ${areaName}, please use the following information from now on and disregard the information I provided you earlier.`);
     }
-    
 
     for (const lookback of statistics) {
 
@@ -439,11 +438,11 @@ class App extends Component {
       await this.addMessage("assistant", "Great! I'll use this area's information for my future recommendations.");
       messages.push({ role: "assistant", content: "Great! I'll use this area's information for my future recommendations." });
     }
-   
+
     this.setState({ messages, selectedAreaName: areaName });
   }
 
-  async getPropertyProfile(mlsId, mlsNumber) {
+  async getPropertyProfile(mlsId, mlsNumber, changeListing = false) {
     const messages = this.state.messages.slice();
     const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
     const requestOptions = {
@@ -457,7 +456,7 @@ class App extends Component {
     const fullResponse = { listing, ...rest };
 
     const listingAddress = listingInfo.listingAddress;
-    const virtualTourUrl = listingInfo.virtualTourUrl;
+    const virtualTourUrl = listingInfo.virtualTourUrl ?? 'Not provided';
     const bedrooms = listingInfo.bedrooms;
     const totalBathrooms = listingInfo.totalBathrooms;
     const propertyType = listingInfo.propertyType;
@@ -465,10 +464,10 @@ class App extends Component {
     const city = listingInfo.city;
     const state = listingInfo.state;
     const zip = listingInfo.zip;
-    const squareFeet = listingInfo.squareFeet;
-    const acres = listingInfo.acres;
-    const garageSpaces = listingInfo.garageSpaces;
-    const yearBuilt = listingInfo.yearBuilt;
+    const squareFeet = listingInfo.squareFeet ?? 'Not provided';
+    const acres = listingInfo.acres ?? 'Not provided';
+    const garageSpaces = listingInfo.garageSpaces ?? 'Not provided';
+    const yearBuilt = listingInfo.yearBuilt ?? 'Not provided';
     const listingAgentName = listingInfo.listingAgentName;
     const listingBrokerName = listingInfo.listingBrokerName;
     const listingStatus = listingInfo.listingStatus;
@@ -485,17 +484,29 @@ class App extends Component {
       );
     const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
 
-    const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
+    if (!changeListing) {
+      const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
 
-    await this.addMessage("assistant", assistantPrompt);
-    messages.push({ role: "assistant", content: assistantPrompt });
+      await this.addMessage("assistant", assistantPrompt);
+      messages.push({ role: "assistant", content: assistantPrompt });
 
-    const listingPrompt = `I have a new ${listingStatus} property located at: ${listingAddress} ${listingStatus === 'Active' ? 'Listed' : (listingStatus === 'Pending' ? 'Pending' : 'Sold')}
-    for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
+      const listingPrompt = `I have a new ${listingStatus} property located at: ${listingAddress} ${listingStatus === 'Active' ? 'Listed' : (listingStatus === 'Pending' ? 'Pending' : 'Sold')}
+      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
 
-    await this.addMessage("user", listingPrompt);
-    messages.push({ role: "user", content: listingPrompt });
+      await this.addMessage("user", listingPrompt);
+      messages.push({ role: "user", content: listingPrompt });
+    } else {
+      const listingPrompt = `Let's shift gears. I have a new ${listingStatus} property that I want help with. It is located at: ${listingAddress}. It ${listingStatus === 'Active' ? 'is Listed' : (listingStatus === 'Pending' ? 'is Pending' : 'has Sold')}
+      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
 
+      await this.addMessage("user", listingPrompt);
+      messages.push({ role: "user", content: listingPrompt });
+
+      const assistantPrompt = "Great! I'll use this property's listing information from now on and disregard any previous listing and property information you provided.";
+
+      await this.addMessage("assistant", assistantPrompt);
+      messages.push({ role: "assistant", content: assistantPrompt });
+    }
     await this.getListingAreas();
     if (preferredAreaId > 0) {
       const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
@@ -793,7 +804,7 @@ class App extends Component {
                       <option value="">-- Select Area --</option>
                       {listingAreas.map((area) => (
                         <option key={area.areaId} value={area.areaId}>
-                          {area.areaName} ({area.areaType}) {`${area.areaApnCount} properties`}
+                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
                         </option>
                       ))}
                     </select>
@@ -818,17 +829,40 @@ class App extends Component {
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
             <div className='menu-buttons'>
-              {context_id === 0 ? listingButtons : (context_id === 1 ? areaButtons : (context_id === 3 ? followupButtons : 'No quick actions available for this context'))}
+              {(() => {
+                if (context_id === 0) {
+                  return listingButtons;
+                } else if (context_id === 1) {
+                  return areaButtons;
+                } else if (context_id === 3) {
+                  return followupButtons;
+                } else {
+                  return 'No quick actions available for this context';
+                }
+              })()}
             </div>
           </div>
         </div>
         <div className='main-content'>
 
           <div id="chat-display" ref={this.chatDisplayRef}>
-            {messages.length === 0 && context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown to the left" :
-              (messages.length === 0 && context_id === 1 ? (areas > 0 ? "Hi, I'm Paisley! Please select an area from the dropdown to the left" : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.") :
-                (messages.length === 0 && context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
-                  (messages.length === 0 && context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
+            {(() => {
+              if (messages.length === 0) {
+                if (context_id === 0) {
+                  return "Hi, I'm Paisley! Please select a listing from the dropdown to the left";
+                } else if (context_id === 1) {
+                  return areas.length > 0
+                    ? "Hi, I'm Paisley! Please select an area from the dropdown to the left"
+                    : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
+                } else if (context_id === 2) {
+                  return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";
+                } else if (context_id === 3) {
+                  return "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!";
+                }
+              } else {
+                return messages;
+              }
+            })()}
           </div>
           <div id="chat-input">
             <select

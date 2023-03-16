@@ -691,8 +691,8 @@ class App extends Component {
     };
 
     const contextOptions = [
-      { value: 0, label: 'Listing Marketing' },
-      { value: 1, label: 'Area Marketing' },
+      { value: 0, label: 'Listing Focused' },
+      { value: 1, label: 'Area Focused' },
       { value: 2, label: 'RE Coaching' },
       { value: 3, label: 'Follow Up' },
     ];

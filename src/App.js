@@ -16,6 +16,7 @@ class App extends Component {
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
+      gptModel: searchParams.get('model') || null,
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
@@ -168,10 +169,20 @@ class App extends Component {
         content: this.state.messageInput
       });
 
+      const requestBody = {
+        message: this.state.messageInput,
+        user_id: this.state.connection_id, 
+        context_id: this.state.context_id
+      }
+
+      if (this.state.gptModel !== null) {
+        requestBody.model = this.state.gptModel;
+      }
+
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: this.state.messageInput, user_id: this.state.connection_id, context_id: this.state.context_id })
+        body: JSON.stringify(requestBody)
       };
       fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
         .then(response => {

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
-import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems} from './constants'
+import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
 
 class App extends Component {
   constructor(props) {
@@ -20,13 +20,15 @@ class App extends Component {
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
       isLoading: false,
-      showCopyNotification: false,
+      showCopyNotification: {},
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
+      selectedListingAreaId: '',
       agentName: '',
       agentProfileImage: '',
       listings: [],
       areas: [],
+      listingAreas: [],
       listingKitUrl: '',
       areaKitUrl: '',
       selectedAreaName: '',
@@ -38,9 +40,11 @@ class App extends Component {
     this.changeContext = this.changeContext.bind(this);
     this.getAgentProfile = this.getAgentProfile.bind(this);
     this.getPropertyProfile = this.getPropertyProfile.bind(this);
+    this.getListingAreas = this.getListingAreas.bind(this);
     this.resetChat = this.resetChat.bind(this);
     this.userSelectedListing = this.userSelectedListing.bind(this);
     this.userSelectedArea = this.userSelectedArea.bind(this);
+    this.userSelectedListingArea = this.userSelectedListingArea.bind(this);
     this.generateListingKit = this.generateListingKit.bind(this);
     this.generateAreaKit = this.generateAreaKit.bind(this);
     this.waitForIncomingChatToFinish = this.waitForIncomingChatToFinish.bind(this);
@@ -60,10 +64,10 @@ class App extends Component {
     this.socket.on('emit_event', (data) => {
       // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
-      this.setState({incomingChatInProgress: true});
+      this.setState({ incomingChatInProgress: true });
     });
     this.socket.on('message_complete', () => {
-      this.setState({incomingChatInProgress: false});
+      this.setState({ incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
     this.socket.on('connect', () => {
@@ -92,14 +96,30 @@ class App extends Component {
     this.scrollToBottom();
   }
 
-  // function to show loading indicator/notification
   showLoading() {
     this.setState({ isLoading: true });
   }
 
-  // function to hide loading indicator/notification
   hideLoading() {
     this.setState({ isLoading: false });
+  }
+
+  scrollToBottom() {
+    if (this.chatDisplayRef.current) {
+      this.chatDisplayRef.current.scrollTop = this.chatDisplayRef.current.scrollHeight;
+    }
+  }
+
+  autoGrowTextarea = () => {
+    const textarea = this.textareaRef.current;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  }
+
+  async waitForIncomingChatToFinish() {
+    while (this.state.incomingChatInProgress) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
 
   changeContext(event) {
@@ -160,7 +180,21 @@ class App extends Component {
           }
         })
         .catch(error => console.error(error));
-        this.setState({ messages, displayMessages, messageInput: '' });
+      this.setState({ messages, displayMessages, messageInput: '' });
+    }
+  }
+
+  async addMessage(role, message) {
+    const streambotApi = `${this.apiServerUrl}/api/addmessages`;
+    const addMsgRequestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role, message: message, user_id: this.state.connection_id, context_id: this.state.context_id })
+    }
+    try {
+      await fetch(streambotApi, addMsgRequestOptions);
+    } catch (error) {
+      console.error('Error in addMessage:', error);
     }
   }
 
@@ -195,13 +229,6 @@ class App extends Component {
       });
   }
 
-
-  scrollToBottom() {
-    if (this.chatDisplayRef.current) {
-      this.chatDisplayRef.current.scrollTop = this.chatDisplayRef.current.scrollHeight;
-    }
-  }
-
   getUserListings() {
     const requestOptions = {
       method: 'POST',
@@ -230,12 +257,6 @@ class App extends Component {
       });
   }
 
-  async waitForIncomingChatToFinish() {
-    while (this.state.incomingChatInProgress) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
   generateListingKit() {
     const requestOptions = {
       method: 'POST',
@@ -251,10 +272,10 @@ class App extends Component {
         setTimeout(async () => {
           await this.waitForIncomingChatToFinish();
           const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({role: "assistant", content: comment});
+          displayMessages.push({ role: "assistant", content: comment });
           this.setState({ displayMessages, listingKitUrl: kitUrl });
         }, 30000);
-        
+
       })
       .catch(error => {
         // handle error
@@ -266,7 +287,7 @@ class App extends Component {
     const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_id: this.state.agentProfileUserId, areaID: this.state.selectedAreaId, collection: 'market-report-kit',  saveDB: true, async: false }),
+      body: JSON.stringify({ api_id: this.state.agentProfileUserId, areaID: this.state.selectedAreaId, collection: 'market-report-kit', saveDB: true, async: false }),
     }
     fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
       .then(response => response.json())
@@ -277,7 +298,7 @@ class App extends Component {
         setTimeout(async () => {
           await this.waitForIncomingChatToFinish();
           const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({role: "assistant", content: comment});
+          displayMessages.push({ role: "assistant", content: comment });
           this.setState({ displayMessages, areaKitUrl: kitUrl });
         }, 30000);
       })
@@ -307,16 +328,36 @@ class App extends Component {
       });
   }
 
+  async getListingAreas() {
+    const requestOptions = {
+      method: 'POST',
+      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aspNetUserId: this.state.agentProfileUserId, mlsID: this.state.selectedListingMlsID, mlsNumber: this.state.selectedListingMlsNumber, consumer: 0 }),
+    }
+    await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        const listingAreas = data.areas;
+        listingAreas.sort((a, b) => b.areaApnCount - a.areaApnCount);
+        // update state with fetched listing areas
+        this.setState({ listingAreas });
+      })
+      .catch(error => {
+        // handle error
+        console.error(error);
+      });
+  }
+
   async userSelectedListing(event) {
     event.preventDefault();
     const [mlsID, mlsNumber] = event.target.value.split('_');
-    this.showLoading();
-    await this.getPropertyProfile(mlsID, mlsNumber);
-    this.hideLoading();
     this.setState({
       selectedListingMlsID: mlsID,
       selectedListingMlsNumber: mlsNumber
     });
+    this.showLoading();
+    await this.getPropertyProfile(mlsID, mlsNumber);
+    this.hideLoading();
     this.generateListingKit();
   }
 
@@ -332,7 +373,19 @@ class App extends Component {
     this.generateAreaKit();
   }
 
-  async getAreaStatisticsPrompt(areaId) {
+  async userSelectedListingArea(event) {
+    event.preventDefault();
+    const selectedListingAreaId = event.target.value;
+    this.showLoading();
+    await this.getAreaStatisticsPrompt(selectedListingAreaId, this.state.selectedListingAreaId ? true : false);
+    this.hideLoading();
+    this.setState({
+      selectedListingAreaId
+    });
+    this.generateAreaKit();
+  }
+
+  async getAreaStatisticsPrompt(areaId, changeArea = false) {
     const messages = this.state.messages.slice();
     const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
     const areaStatsptions = {
@@ -353,10 +406,16 @@ class App extends Component {
     const { areaName } = await nameResults.json();
 
     const areaStatsPrompts = [];
-    areaStatsPrompts.push(`The following information is for ${areaName}.`);
+
+    if (!changeArea) {
+      areaStatsPrompts.push(`The following information is for the ${areaName} area.`);
+    } else {
+      areaStatsPrompts.push(`I want to change the This property is also located in ${areaName}, please use this information from now on and disregard the information I provided you earlier.`);
+    }
     
+
     for (const lookback of statistics) {
-      
+
       areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
       for (const propLookback of lookback.propertyTypeStatistics) {
@@ -367,11 +426,20 @@ class App extends Component {
     }
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
-    await this.addMessage("assistant", "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?");
-    messages.push({ role: "assistant", content: "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?" });
+    if (!changeArea) {
+      await this.addMessage("assistant", "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?");
+      messages.push({ role: "assistant", content: "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?" });
 
-    await this.addMessage("user", areaStatPrompt);
-    messages.push({ role: "user", content: areaStatPrompt });
+      await this.addMessage("user", areaStatPrompt);
+      messages.push({ role: "user", content: areaStatPrompt });
+    } else {
+      await this.addMessage("user", areaStatPrompt);
+      messages.push({ role: "user", content: areaStatPrompt });
+
+      await this.addMessage("assistant", "Great! I'll use this area's information for my future recommendations.");
+      messages.push({ role: "assistant", content: "Great! I'll use this area's information for my future recommendations." });
+    }
+   
     this.setState({ messages, selectedAreaName: areaName });
   }
 
@@ -428,6 +496,7 @@ class App extends Component {
     await this.addMessage("user", listingPrompt);
     messages.push({ role: "user", content: listingPrompt });
 
+    await this.getListingAreas();
     if (preferredAreaId > 0) {
       const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
       const areaStatsptions = {
@@ -468,6 +537,7 @@ class App extends Component {
 
       await this.addMessage("user", areaStatPrompt);
       messages.push({ role: "user", content: areaStatPrompt });
+      this.setState({ selectedListingAreaId: preferredAreaId });
     }
     else {
       const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
@@ -486,7 +556,7 @@ class App extends Component {
         body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: this.state.agentProfileUserId, consumer: 0 })
       }
       const nameResults = await fetch(areaNameApi, areaNameOptions);
-      const { areaName } = await nameResults.json();
+      const { areaName, areaId } = await nameResults.json();
 
       const areaStatsPrompts = [];
       areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
@@ -509,6 +579,7 @@ class App extends Component {
 
       await this.addMessage("user", areaStatPrompt);
       messages.push({ role: "user", content: areaStatPrompt });
+      this.setState({ selectedListingAreaId: areaId });
     }
 
     this.setState({ messages: messages, selectedListingAddress: listingAddress });
@@ -528,12 +599,12 @@ class App extends Component {
     const genieResults = await fetch(genieApi, requestOptions);
     const agentInfo = await genieResults.json();
     const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
-    const displayName = agentInfo.marketingSettings.profile.displayName;
-    const email = agentInfo.marketingSettings.profile.email;
-    const phone = agentInfo.marketingSettings.profile.phone;
-    const website = agentInfo.marketingSettings.profile.websiteUrl;
-    const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber;
-    const about = agentInfo.marketingSettings.profile.about;
+    const displayName = agentInfo.marketingSettings.profile.displayName ?? name;
+    const email = agentInfo.marketingSettings.profile.email ?? agentInfo.emailAddress;
+    const phone = agentInfo.marketingSettings.profile.phone ?? agentInfo.phoneNumber;
+    const website = agentInfo.marketingSettings.profile.websiteUrl ?? 'Not available';
+    const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber ?? 'Not available';
+    const about = agentInfo.marketingSettings.profile.about ?? 'Not available';
     const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url ?? '';
     const messages = this.state.messages.slice();
 
@@ -554,29 +625,49 @@ class App extends Component {
     this.hideLoading();
   }
 
-  async addMessage(role, message) {
-    const streambotApi = `${this.apiServerUrl}/api/addmessages`;
-    const addMsgRequestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: role, message: message, user_id: this.state.connection_id, context_id: this.state.context_id })
-    }
-    try {
-      await fetch(streambotApi, addMsgRequestOptions);
-    } catch (error) {
-      console.error('Error in addMessage:', error);
-    }
-    
-  }
-
-  autoGrowTextarea = () => {
-    const textarea = this.textareaRef.current;
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
-  };
-
   render() {
-    const { isUserIdInputDisabled } = this.state;
+    const {
+      context_id,
+      displayMessages,
+      messageInput,
+      listings,
+      areas,
+      listingAreas,
+      isUserIdInputDisabled,
+      isLoading,
+      incomingChatInProgress,
+      agentName,
+      agentProfileImage,
+      agentProfileUserId,
+      selectedListingAreaId,
+      isUserListingSelectDisabled,
+      isUserAreaSelectDisabled,
+      showCopyNotification
+    } = this.state;
+
+    const copyToClipboard = (text, index) => {
+      const turndownService = new TurndownService();
+      const markdown = turndownService.turndown(text);
+      navigator.clipboard.writeText(markdown);
+
+      this.setState(prevState => (
+        {
+          showCopyNotification: {
+            ...prevState.showCopyNotification,
+            [index]: true
+          }
+        }));
+      setTimeout(() => {
+        this.setState(prevState => (
+          {
+            showCopyNotification: {
+              ...prevState.showCopyNotification,
+              [index]: false
+            }
+          }));
+      }, 3500);
+    };
+
     const contextOptions = [
       { value: 0, label: 'Listing Marketing' },
       { value: 1, label: 'Area Marketing' },
@@ -584,7 +675,7 @@ class App extends Component {
       { value: 3, label: 'Follow Up' },
     ];
 
-    const dropdownItems = contextOptions.map((option, index) => {
+    const contextItems = contextOptions.map((option, index) => {
       return (
         <option key={index} value={option.value}>
           {option.label}
@@ -592,11 +683,9 @@ class App extends Component {
       );
     });
 
-    
-
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -610,7 +699,7 @@ class App extends Component {
 
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -624,7 +713,7 @@ class App extends Component {
 
     const followupButtons = followupMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={this.state.isLoading || this.state.incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
           this.setState({ messageInput: e.target.value }, async () => {
             await this.addMessage("user", option.customPrompt)
             await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
@@ -636,23 +725,7 @@ class App extends Component {
       );
     });
 
-    const copyToClipboard = (text) => {
-      const turndownService = new TurndownService();
-      const markdown = turndownService.turndown(text);
-      navigator.clipboard.writeText(markdown);
-
-      // add animation to copy button
-      const copyButton = document.querySelector('.copy-icon');
-      this.setState({ showCopyNotification: true });
-      copyButton.classList.add('copied');
-      setTimeout(() => {
-        copyButton.classList.remove('copied');
-        this.setState({ showCopyNotification: false });
-      }, 2500);
-    };
-
-
-    const messages = this.state.displayMessages.map((msg, index) => {
+    const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
         <div
@@ -662,8 +735,8 @@ class App extends Component {
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
           {msg.role === "assistant" && (
-            <button className='copy-icon' onClick={() => copyToClipboard(content)}>
-              {this.state.showCopyNotification ? 'Copied!' : 'Copy'}
+            <button className='copy-icon' onClick={() => copyToClipboard(content, index)}>
+              {showCopyNotification[index] ? 'Copied!' : 'Copy'}
             </button>
           )}
         </div>
@@ -672,7 +745,7 @@ class App extends Component {
 
     return (
       <div className="App">
-        <div id="loading-container" style={{ display: this.state.isLoading ? 'flex' : 'none' }}>
+        <div id="loading-container" style={{ display: isLoading ? 'flex' : 'none' }}>
           <p>Loading...</p>
         </div>
         <div className="sidebar">
@@ -683,7 +756,7 @@ class App extends Component {
                 {isUserIdInputDisabled === false && (
                   <input
                     type="text"
-                    value={this.state.agentProfileUserId}
+                    value={agentProfileUserId}
                     placeholder="Enter AspNetUserID"
                     onChange={(e) => this.setState({ agentProfileUserId: e.target.value })}
                     disabled={isUserIdInputDisabled}
@@ -695,33 +768,43 @@ class App extends Component {
                     type="submit">Save</button>
                 )}
                 <div className='agent-info'>
-                  {this.state.agentProfileImage !== '' && (
-                    <img className='agent-profile-image' alt={`Headshot of ${this.state.agentName}`} src={this.state.agentProfileImage} />
+                  {agentProfileImage !== '' && (
+                    <img className='agent-profile-image' alt={`Headshot of ${agentName}`} src={agentProfileImage} />
                   )}
-                  {this.state.agentName !== '' && (
+                  {agentName !== '' && (
                     <h2 className='sidebar-subtitle'>
-                      {this.state.agentName}
+                      {agentName}
                     </h2>
                   )}
                 </div>
               </form>
-              {this.state.context_id === 0 && this.state.agentProfileUserId && this.state.listings.length > 0 && (
+              {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={this.state.isUserListingSelectDisabled || this.state.incomingChatInProgress} onChange={this.userSelectedListing}>
+                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={this.userSelectedListing}>
                     <option value="">-- Select Listing --</option>
-                    {this.state.listings.map((listing, index) => (
+                    {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
                         {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
                       </option>
                     ))}
                   </select>
+                  {listingAreas.length > 0 && (
+                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={this.userSelectedListingArea}>
+                      <option value="">-- Select Area --</option>
+                      {listingAreas.map((area) => (
+                        <option key={area.areaId} value={area.areaId}>
+                          {area.areaName} ({area.areaType}) {`${area.areaApnCount} properties`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
-              {this.state.context_id === 1 && this.state.agentProfileUserId && this.state.areas.length > 0 && (
+              {context_id === 1 && agentProfileUserId && areas.length > 0 && (
                 <div className='sidebar-section areaSelectBox'>
-                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={this.state.isUserAreaSelectDisabled || this.state.incomingChatInProgress} onChange={this.userSelectedArea}>
+                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={this.userSelectedArea}>
                     <option value="">-- Select Area --</option>
-                    {this.state.areas.map((area, index) => (
+                    {areas.map((area, index) => (
                       <option key={index} value={area.areaId}>
                         {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
                       </option>
@@ -735,30 +818,30 @@ class App extends Component {
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
             <div className='menu-buttons'>
-              {this.state.context_id === 0 ? listingButtons : (this.state.context_id === 1 ? areaButtons : (this.state.context_id === 3 ? followupButtons : 'No quick actions available for this context'))}
+              {context_id === 0 ? listingButtons : (context_id === 1 ? areaButtons : (context_id === 3 ? followupButtons : 'No quick actions available for this context'))}
             </div>
           </div>
         </div>
         <div className='main-content'>
 
           <div id="chat-display" ref={this.chatDisplayRef}>
-            {messages.length === 0 && this.state.context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown to the left" :
-              (messages.length === 0 && this.state.context_id === 1 ? "Hi, I'm Paisley! Please select an area from the dropdown to the left" :
-                (messages.length === 0 && this.state.context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
-                  (messages.length === 0 && this.state.context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
+            {messages.length === 0 && context_id === 0 ? "Hi, I'm Paisley! Please select a listing from the dropdown to the left" :
+              (messages.length === 0 && context_id === 1 ? (areas > 0 ? "Hi, I'm Paisley! Please select an area from the dropdown to the left" : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.") :
+                (messages.length === 0 && context_id === 2 ? "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!" :
+                  (messages.length === 0 && context_id === 3 ? "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!" : messages)))}
           </div>
           <div id="chat-input">
-            <select 
-              className='Context-dropdown' 
-              onChange={this.changeContext} 
-              value={this.state.context_id}
-              disabled={this.state.isLoading || this.state.incomingChatInProgress}
+            <select
+              className='Context-dropdown'
+              onChange={this.changeContext}
+              value={context_id}
+              disabled={isLoading || incomingChatInProgress}
             >
-              {dropdownItems}
+              {contextItems}
             </select>
             <form onSubmit={this.sendMessage}>
               <textarea
-                value={this.state.messageInput}
+                value={messageInput}
                 ref={this.textareaRef}
                 className="chat-input-textarea"
                 onChange={(e) => this.setState({ messageInput: e.target.value })}
@@ -770,16 +853,16 @@ class App extends Component {
                   }
                 }}
                 placeholder="Enter your message..."
-                disabled={this.state.isLoading || this.state.incomingChatInProgress}
+                disabled={isLoading || incomingChatInProgress}
               />
 
               <div className='button-group'>
-                <button 
-                disabled={this.state.isLoading || this.state.incomingChatInProgress}
-                type="submit">Send</button>
-                <button 
-                disabled={this.state.isLoading || this.state.incomingChatInProgress}
-                onClick={this.resetChat}>Reset Chat</button>
+                <button
+                  disabled={isLoading || incomingChatInProgress}
+                  type="submit">Send</button>
+                <button
+                  disabled={isLoading || incomingChatInProgress}
+                  onClick={this.resetChat}>Reset Chat</button>
               </div>
             </form>
           </div>

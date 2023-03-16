@@ -283,7 +283,7 @@ class App extends Component {
         setTimeout(async () => {
           await this.waitForIncomingChatToFinish();
           const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({ role: "assistant", content: comment });
+          displayMessages.push({ role: "assistant", content: comment, isKit: true });
           this.setState({ displayMessages, listingKitUrl: kitUrl });
         }, 30000);
 
@@ -752,7 +752,7 @@ class App extends Component {
       return (
         <div
           key={index}
-          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"}`}
+          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""}`}
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>

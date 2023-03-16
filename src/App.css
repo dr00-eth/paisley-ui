@@ -5,6 +5,7 @@
   --secondary-color: #1a1a1a;
   --accent-color: #4aa1d1;
   --text-color: #ffffff;
+  --kit-color: #32CD32;
   --shadow-color: rgba(0, 0, 0, 0.25);
   --scrollbar-thumb-color: #333;
 }
@@ -239,6 +240,10 @@ header {
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.1);
   box-shadow: 5px 5px 5px 3px var(--shadow-color);
+}
+
+.chat-bubble.assistant.kit {
+  background-color: rgba(50, 205, 50, 0.3);
 }
 
 .chat-bubble.assistant {

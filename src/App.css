@@ -352,12 +352,18 @@ header {
 
 #footer {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   width: 100%;
   margin-bottom: 1rem;
   color: var(--text-color);
   flex-shrink: 0;
-  /* Add this property to prevent the footer from shrinking */
+  text-align: center;
+}
+
+#footer p {
+  margin: 0;
+  margin-bottom: 0.5rem;
 }
 
 .menu-buttons button {

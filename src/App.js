@@ -52,12 +52,18 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
-    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'
-    //this.apiServerUrl = 'http://127.0.0.1:8008'
+    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app';
+    //this.apiServerUrl = 'http://127.0.0.1:8008';
+    if (this.apiServerUrl.startsWith('https')) {
+      this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
+    } else {
+      this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
+    }
+    
   }
 
   componentDidMount() {
-    this.socket = io(this.apiServerUrl, {
+    this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
     });

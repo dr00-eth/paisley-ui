@@ -52,7 +52,7 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
-    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app';
+    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app/';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);

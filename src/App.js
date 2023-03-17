@@ -315,7 +315,7 @@ class App extends Component {
         setTimeout(async () => {
           await this.waitForIncomingChatToFinish();
           const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({ role: "assistant", content: comment });
+          displayMessages.push({ role: "assistant", content: comment, isKit: true });
           this.setState({ displayMessages, areaKitUrl: kitUrl });
         }, 30000);
       })

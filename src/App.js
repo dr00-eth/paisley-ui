@@ -16,7 +16,7 @@ class App extends Component {
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
-      gptModel: searchParams.get('model') || null,
+      gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,

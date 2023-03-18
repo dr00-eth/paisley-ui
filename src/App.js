@@ -511,8 +511,17 @@ class App extends Component {
       for (const propLookback of lookback.propertyTypeStatistics) {
         const propTypeDescription = propLookback.propertyTypeDescription;
         const statistics = propLookback.statistics;
-        areaStatsPrompts.push(`For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`);
+      
+        if (
+          propTypeDescription === "Condo/Townhome" ||
+          propTypeDescription === "Single Family Detached"
+        ) {
+          areaStatsPrompts.push(
+            `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
+          );
+        }
       }
+      
     }
     const areaStatPrompt = areaStatsPrompts.join('\n');
 

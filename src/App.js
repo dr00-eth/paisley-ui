@@ -482,7 +482,7 @@ class App extends Component {
     const areaStatsptions = {
       method: 'POST',
       headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [3, 6, 12] })
+      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
     }
     const statsResults = await fetch(areaStatsApi, areaStatsptions);
     const { statistics } = await statsResults.json();
@@ -603,7 +603,7 @@ class App extends Component {
       const areaStatsptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [3, 6, 12] })
+        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
       }
       const statsResults = await fetch(areaStatsApi, areaStatsptions);
       const { statistics } = await statsResults.json();
@@ -643,7 +643,7 @@ class App extends Component {
       const areaStatsptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode: listingInfo.zip, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [3, 6, 12] })
+        body: JSON.stringify({ zipCode: listingInfo.zip, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
       }
       const statsResults = await fetch(areaStatsApi, areaStatsptions);
       const { statistics } = await statsResults.json();

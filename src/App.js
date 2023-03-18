@@ -77,7 +77,7 @@ class App extends Component {
           .then(response => response.json())
           .then(() => {
             if (this.state.agentProfileUserId) {
-              getAgentProfile();
+              getAgentProfile(this);
             }
           })
           .catch(error => console.error(error));
@@ -91,8 +91,6 @@ class App extends Component {
       if (this.state.messagesTokenCount > 4000) {
         callbackData.messages = this.messageManager.getMessages();
       }
-
-      // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
       this.setState({ incomingChatInProgress: true });
     });
@@ -338,7 +336,6 @@ class App extends Component {
               )}
             </div>
           </div>
-
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
             <div className='menu-buttons'>
@@ -357,7 +354,6 @@ class App extends Component {
           </div>
         </div>
         <div className='main-content'>
-
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
@@ -402,7 +398,6 @@ class App extends Component {
                 placeholder="Enter your message..."
                 disabled={isLoading || incomingChatInProgress}
               />
-
               <div className='button-group'>
                 <button
                   disabled={isLoading || incomingChatInProgress}
@@ -422,5 +417,4 @@ class App extends Component {
     );
   }
 }
-
 export default App;

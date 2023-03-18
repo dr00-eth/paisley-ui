@@ -1,4 +1,4 @@
-import { generateListingKit, generateAreaKit } from "./utils";
+import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile } from "./utils";
 
 export function updateDisplayMessagesWithFavorites(context) {
     const { displayMessages, messages } = context.state;
@@ -128,7 +128,7 @@ export async function userSelectedListing(context, event) {
       selectedListingMlsNumber: mlsNumber
     });
     showLoading(context);
-    await context.getPropertyProfile(mlsID, mlsNumber, context.state.selectedListingMlsNumber ? true : false);
+    await getPropertyProfile(context, mlsID, mlsNumber, context.state.selectedListingMlsNumber ? true : false);
     hideLoading(context);
     generateListingKit(context);
   }
@@ -140,7 +140,7 @@ export async function userSelectedArea(context, event) {
         selectedAreaId: areaId
     });
     showLoading(context);
-    await this.getAreaStatisticsPrompt(areaId, context.state.selectedAreaId ? true : false);
+    await getAreaStatisticsPrompt(context, areaId, context.state.selectedAreaId ? true : false);
     hideLoading(context);
     generateAreaKit(context);
   }
@@ -152,7 +152,7 @@ export async function userSelectedListingArea(context, event) {
         selectedListingAreaId
       });
     showLoading(context);
-    await context.getAreaStatisticsPrompt(selectedListingAreaId, context.state.selectedListingAreaId ? true : false);
+    await getAreaStatisticsPrompt(context, selectedListingAreaId, context.state.selectedListingAreaId ? true : false);
     hideLoading(context);
     context.generateAreaKit();
   }

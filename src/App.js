@@ -6,8 +6,6 @@ import TurndownService from 'turndown';
 import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
 import SmartMessageManager from './SmartMessageManager';
 import {  
-  showLoading, 
-  hideLoading, 
   scrollToBottom, 
   autoGrowTextarea, 
   assignMessageIdToDisplayMessage,
@@ -19,7 +17,7 @@ import {
   userSelectedListing,
   userSelectedArea,
   userSelectedListingArea } from './helpers';
-import { getUserAreas, getListingAreas, getUserListings, sendMessage, addMessage } from './utils';
+import { sendMessage, addMessage, getAgentProfile } from './utils';
 
 class App extends Component {
   constructor(props) {
@@ -54,8 +52,6 @@ class App extends Component {
       incomingChatInProgress: false,
       messagesTokenCount: 0
     };
-    this.getAgentProfile = this.getAgentProfile.bind(this);
-    this.getPropertyProfile = this.getPropertyProfile.bind(this);
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
@@ -81,7 +77,7 @@ class App extends Component {
           .then(response => response.json())
           .then(() => {
             if (this.state.agentProfileUserId) {
-              this.getAgentProfile();
+              getAgentProfile();
             }
           })
           .catch(error => console.error(error));
@@ -117,247 +113,6 @@ class App extends Component {
 
   componentDidUpdate() {
     scrollToBottom(this);
-  }
-
-  async getAreaStatisticsPrompt(areaId, changeArea = false) {
-    const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
-    const areaStatsptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
-    }
-    const statsResults = await fetch(areaStatsApi, areaStatsptions);
-    const { statistics } = await statsResults.json();
-
-    const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-    const areaNameOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0 })
-    }
-    const nameResults = await fetch(areaNameApi, areaNameOptions);
-    const { areaName } = await nameResults.json();
-
-    const areaStatsPrompts = [];
-
-    if (!changeArea) {
-      areaStatsPrompts.push(`Information for ${areaName} area:`);
-    } else {
-      areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous information provided.`);
-    }
-
-    for (const lookback of statistics) {
-
-      areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-      for (const propLookback of lookback.propertyTypeStatistics) {
-        const propTypeDescription = propLookback.propertyTypeDescription;
-        const statistics = propLookback.statistics;
-      
-        if (
-          statistics.soldPropertyTypeCount > 0 &&
-          (propTypeDescription === "Condo/Townhome" ||
-          propTypeDescription === "Single Family Detached")
-        ) {
-          areaStatsPrompts.push(
-            `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
-          );
-        }
-      }
-      
-    }
-    const areaStatPrompt = areaStatsPrompts.join('\n');
-
-    if (!changeArea) {
-      await addMessage(this, "assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.");
-
-      await addMessage(this, "user", areaStatPrompt);
-
-    } else {
-      await addMessage(this, "user", areaStatPrompt);
-
-      await addMessage(this, "assistant", "I'll use this area's info for future recommendations.");
-    }
-
-    this.setState({ selectedAreaId: areaId, selectedAreaName: areaName });
-  }
-
-  async getPropertyProfile(mlsId, mlsNumber, changeListing = false) {
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mlsId: mlsId, mlsNumber: mlsNumber, userId: this.state.agentProfileUserId, consumer: 0 })
-    }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const { listing, ...rest } = await genieResults.json();
-    const listingInfo = { ...listing };
-    const fullResponse = { listing, ...rest };
-
-    const listingAddress = listingInfo.listingAddress;
-    const virtualTourUrl = listingInfo.virtualTourUrl ?? 'Not provided';
-    const bedrooms = listingInfo.bedrooms;
-    const totalBathrooms = listingInfo.totalBathrooms;
-    const propertyType = listingInfo.propertyType;
-    const propertyTypeId = listingInfo.propertyTypeID;
-    const city = listingInfo.city;
-    const state = listingInfo.state;
-    const zip = listingInfo.zip;
-    const squareFeet = listingInfo.squareFeet ?? 'Not provided';
-    const acres = listingInfo.acres ?? 'Not provided';
-    const garageSpaces = listingInfo.garageSpaces ?? 'Not provided';
-    const yearBuilt = listingInfo.yearBuilt ?? 'Not provided';
-    const listingAgentName = listingInfo.listingAgentName;
-    const listingBrokerName = listingInfo.listingBrokerName;
-    const listingStatus = listingInfo.listingStatus;
-    const remarks = listingInfo.remarks;
-    const preferredAreaId = fullResponse.preferredAreaId;
-    const formatPrice = (price) => {
-      return `$${price.toLocaleString()}`;
-    };
-    const priceStr = listingStatus === "Sold"
-      ? `${formatPrice(listingInfo.salePrice)}`
-      : (listingInfo.highPrice
-        ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
-        : `${formatPrice(listingInfo.lowPrice)}`
-      );
-    const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
-
-    if (!changeListing) {
-      const assistantPrompt = "Do you have a specific MLS Listing for help today?";
-
-      await addMessage(this, "assistant", assistantPrompt);
-
-      const listingPrompt = `New ${listingStatus} property at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
-
-      await addMessage(this, "user", listingPrompt);
-    } else {
-      const listingPrompt = `"New ${listingStatus} property for help at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
-
-      await addMessage(this, "user", listingPrompt);
-
-      const assistantPrompt = "I'll use this property's info and disregard previous listing info.";
-
-      await addMessage(this, "assistant", assistantPrompt);
-    }
-    await getListingAreas(this);
-    if (preferredAreaId > 0) {
-      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
-      const areaStatsptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
-      }
-      const statsResults = await fetch(areaStatsApi, areaStatsptions);
-      const { statistics } = await statsResults.json();
-
-      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-      const areaNameOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0 })
-      }
-      const nameResults = await fetch(areaNameApi, areaNameOptions);
-      const { areaName } = await nameResults.json();
-
-      const areaStatsPrompts = [];
-      areaStatsPrompts.push(`This property exists in the ${areaName} neighborhood.`);
-
-      for (const lookback of statistics) {
-        areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
-
-        if (propTypeStats.length > 0) {
-          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
-          const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`);
-        }
-      }
-      const areaStatPrompt = areaStatsPrompts.join('\n');
-
-      await addMessage(this, "assistant", "Do you have info about the area or neighborhood of this property?");
-
-      await addMessage(this, "user", areaStatPrompt);
-      this.setState({ selectedListingAreaId: preferredAreaId });
-    }
-    else {
-      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
-      const areaStatsptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode: listingInfo.zip, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
-      }
-      const statsResults = await fetch(areaStatsApi, areaStatsptions);
-      const { statistics } = await statsResults.json();
-
-      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-      const areaNameOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: this.state.agentProfileUserId, consumer: 0 })
-      }
-      const nameResults = await fetch(areaNameApi, areaNameOptions);
-      const { areaName, areaId } = await nameResults.json();
-
-      const areaStatsPrompts = [];
-      areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
-
-      for (const lookback of statistics) {
-        areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
-
-        if (propTypeStats.length > 0) {
-          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
-          const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For ${propTypeDescription} homes like this, avg. sale price: $${statistics.averageSalePrice.toLocaleString()}, avg. days on market: ${statistics.averageDaysOnMarket}, avg. price per sq. ft.: $${statistics.averagePricePerSqFt.toLocaleString()}."
-            3.) "Property in ${areaName} zip code.`);
-        }
-      }
-      const areaStatPrompt = areaStatsPrompts.join('\n');
-
-      await addMessage(this, "assistant", "Do you have info about the area or neighborhood of this property?");
-
-      await addMessage(this, "user", areaStatPrompt);
-      this.setState({ selectedListingAreaId: areaId });
-    }
-
-    this.setState({ selectedListingAddress: listingAddress });
-  }
-
-  async getAgentProfile(event) {
-    if (event) {
-      event.preventDefault();
-    }
-    const userID = event ? event.target[0].value : this.state.agentProfileUserId;
-    showLoading(this);
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
-    }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const agentInfo = await genieResults.json();
-    const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
-    const displayName = agentInfo.marketingSettings.profile.displayName ?? name;
-    const email = agentInfo.marketingSettings.profile.email ?? agentInfo.emailAddress;
-    const phone = agentInfo.marketingSettings.profile.phone ?? agentInfo.phoneNumber;
-    const website = agentInfo.marketingSettings.profile.websiteUrl ?? 'Not available';
-    const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber ?? 'Not available';
-    const about = agentInfo.marketingSettings.profile.about ?? 'Not available';
-    const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url ?? '';
-
-    const assistantPrompt = 'To assist you better, please provide more info about yourself and relevant details for content optimization.';
-    await addMessage(this, "assistant", assistantPrompt, true);
-
-    const agentPrompt = `Name: ${name}, display name: ${displayName} (use separate lines if different), email: ${email}, phone: ${phone}, website: ${website}, license: ${licenseNumber}, about: ${about}.`;
-    await addMessage(this, "user", agentPrompt, true);
-
-    this.setState({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
-    getUserListings(this);
-    getUserAreas(this);
-    hideLoading(this);
   }
 
   render() {
@@ -521,7 +276,7 @@ class App extends Component {
           <div className='sidebar-top'>
             <div className="sidebar-section">
               <h1 className="sidebar-title">TheGenie - Paisley</h1>
-              <form className='user-form' onSubmit={this.getAgentProfile}>
+              <form className='user-form' onSubmit={(e) => getAgentProfile(this, e)}>
                 {isUserIdInputDisabled === false && (
                   <input
                     type="text"

@@ -513,8 +513,9 @@ class App extends Component {
         const statistics = propLookback.statistics;
       
         if (
-          propTypeDescription === "Condo/Townhome" ||
-          propTypeDescription === "Single Family Detached"
+          statistics.soldPropertyTypeCount > 0 &&
+          (propTypeDescription === "Condo/Townhome" ||
+          propTypeDescription === "Single Family Detached")
         ) {
           areaStatsPrompts.push(
             `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`

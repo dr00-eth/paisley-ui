@@ -328,6 +328,22 @@ header {
   animation: fade-out 2.5s;
 }
 
+.heart-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--text-color);
+  padding: 5px;
+  cursor: pointer;
+  animation: fade-in 2.5s;
+}
+
+.heart-icon.active {
+  color: var(--secondary-color);
+  animation: fade-out 2.5s;
+}
+
+
 @keyframes fade-out {
   from {
     opacity: 1;

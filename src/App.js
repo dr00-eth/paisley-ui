@@ -4,13 +4,15 @@ import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
 import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
+import SmartMessageManager from './MessageManager';
 
 class App extends Component {
   constructor(props) {
     super(props);
+    this.messageManager = new SmartMessageManager();
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
-      messages: [],
+      messages: this.messageManager.getMessages(),
       displayMessages: [],
       messageInput: '',
       connection_id: '',
@@ -35,6 +37,7 @@ class App extends Component {
       selectedAreaName: '',
       selectedListingAddress: '',
       incomingChatInProgress: false,
+      messagesTokenCount: 0
     };
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
@@ -52,14 +55,13 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
-    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app/';
-    //this.apiServerUrl = 'http://127.0.0.1:8008';
+    //this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
+    this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
-    
   }
 
   componentDidMount() {
@@ -69,22 +71,28 @@ class App extends Component {
     });
     this.socket.on('message', this.handleMessage);
     this.socket.on('emit_event', (data) => {
+      const callbackData = {...data.callback_data};
+      if (this.state.messagesTokenCount > 4000) {
+        callbackData.messages = this.messageManager.getMessages();
+      }
+
       // call the callback function with the data provided by the server
       this.socket.emit('callback_event', data.callback_data);
       this.setState({ incomingChatInProgress: true });
     });
-    this.socket.on('message_complete', () => {
+    this.socket.on('message_complete', (data) => {
+      const messageId = this.messageManager.addMessage("assistant", data.message);
+      this.assignMessageIdToDisplayMessage(data.message, messageId);
       this.setState({ incomingChatInProgress: false });
       this.textareaRef.current.focus();
-    });
+      console.log(this.messageManager.messages);
+    });    
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(response => response.json())
-          .then(data => {
-            const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-            this.setState({ messages: messages });
+          .then(() => {
             if (this.state.agentProfileUserId) {
               this.getAgentProfile();
             }
@@ -101,6 +109,37 @@ class App extends Component {
 
   componentDidUpdate() {
     this.scrollToBottom();
+  }
+
+  updateDisplayMessagesWithFavorites() {
+    const updatedDisplayMessages = this.state.displayMessages.map(msg => {
+      const updatedMessage = this.state.messages.find(m => m.id === msg.id);
+      return updatedMessage ? updatedMessage : msg;
+    });
+    this.setState({ displayMessages: updatedDisplayMessages });
+  }
+
+  assignMessageIdToDisplayMessage(content, messageId) {
+    const updatedDisplayMessages = this.state.displayMessages.map(msg => {
+      if (msg.content === content) {
+        return { ...msg, id: messageId };
+      }
+      return msg;
+    });
+    this.setState({ displayMessages: updatedDisplayMessages });
+  }
+  
+  messageExists(role, content) {
+    const messages = this.messageManager.getMessages();
+    return messages.some(message => message.role === role && message.content === content);
+  }  
+
+  handleToggleFavorite(id) {
+    this.messageManager.toggleFavorite(id);
+    this.setState({ messages: this.messageManager.getMessages() }, () => {
+      this.updateDisplayMessagesWithFavorites();
+    });
+    console.log(this.messageManager.messages);
   }
 
   showLoading() {
@@ -131,12 +170,10 @@ class App extends Component {
 
   changeContext(event) {
     const newContextId = parseInt(event.target.value);
-    this.setState({ context_id: newContextId, messages: [], displayMessages: [] });
+    this.setState({ context_id: newContextId, messages: this.messageManager.resetMessages(), displayMessages: [] });
     fetch(`${this.apiServerUrl}/api/getmessages/${newContextId}/${this.state.connection_id}`)
       .then(response => response.json())
-      .then(data => {
-        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages });
+      .then(() => {
         if (newContextId === 2 || newContextId === 3) {
           this.getAgentProfile();
         }
@@ -145,39 +182,34 @@ class App extends Component {
   }
 
   handleMessage(data) {
-    const messages = this.state.messages.slice();
     const displayMessages = this.state.displayMessages.slice();
-    const latestMsg = messages[messages.length - 1];
     const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-    if (latestMsg && latestMsg.role === "assistant" && latestDisplayMsg && latestDisplayMsg.role === "assistant") {
+    if (latestDisplayMsg && latestDisplayMsg.role === "assistant") {
       // Append incoming message to the latest assistant message
-      latestMsg.content += data.message;
       latestDisplayMsg.content += data.message;
     } else {
       // Add a new assistant message with the incoming message
-      messages.push({ role: "assistant", content: data.message });
-      displayMessages.push({ role: "assistant", content: data.message })
+      displayMessages.push({ role: "assistant", content: data.message, isFav: false })
     }
-    this.setState({ messages: messages, displayMessages: displayMessages });
+    this.setState({ displayMessages: displayMessages });
   }
 
-  sendMessage(event) {
+  async sendMessage(event) {
     event.preventDefault();
     if (this.state.messageInput) {
-      const messages = [...this.state.messages];
+      const messageId = this.messageManager.addMessage("user", this.state.messageInput);
       const displayMessages = [...this.state.displayMessages];
-      messages.push({
-        role: 'user',
-        content: this.state.messageInput
-      });
+      
       displayMessages.push({
         role: 'user',
-        content: this.state.messageInput
+        content: this.state.messageInput,
+        id: messageId,
+        isFav: false
       });
 
       const requestBody = {
         message: this.state.messageInput,
-        user_id: this.state.connection_id, 
+        user_id: this.state.connection_id,
         context_id: this.state.context_id
       }
 
@@ -190,18 +222,53 @@ class App extends Component {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       };
-      fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
+      await fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to send message');
           }
         })
         .catch(error => console.error(error));
-      this.setState({ messages, displayMessages, messageInput: '' });
+      this.setState({ messages: this.messageManager.getMessages(), displayMessages, messageInput: '' });
+
+      const tokenChkBody = {
+        messages: this.state.messages,
+        model: this.state.gptModel
+      }
+
+      const tokenChkReq = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tokenChkBody)
+      };
+
+      await fetch(`${this.apiServerUrl}/api/gettokencount`, tokenChkReq)
+        .then(response => response.json())
+        .then(data => {
+          if (data.tokencounts > 3000) {
+            console.log("pruning tokens");
+            this.messageManager.checkThresholdAndMove(.25);
+            this.setState({ messages: this.messageManager.getMessages(), messagesTokenCount: data.tokencounts });
+          }
+          console.log(data.tokencounts);
+        })
+        .catch(error => console.error(error));
     }
   }
 
-  async addMessage(role, message) {
+  getCallerFunctionName() {
+    const stack = new Error().stack;
+    const lines = stack.split('\n');
+    const callerLine = lines[3];
+  
+    const match = callerLine.match(/at (?:\w+\.)*(\w+)\s*\(/);
+    return match ? match[1] : 'unknown';
+  }
+
+  async addMessage(role, message, isFav = false) {
+    // const callerFunctionName = this.getCallerFunctionName();
+    // console.log('Caller:', callerFunctionName);
+
     const streambotApi = `${this.apiServerUrl}/api/addmessages`;
     const addMsgRequestOptions = {
       method: 'POST',
@@ -210,6 +277,10 @@ class App extends Component {
     }
     try {
       await fetch(streambotApi, addMsgRequestOptions);
+      this.messageManager.addMessage(role, message, isFav);
+      this.setState({ messages: this.messageManager.getMessages() })
+
+      //console.log(this.messageManager.messages);
     } catch (error) {
       console.error('Error in addMessage:', error);
     }
@@ -233,8 +304,8 @@ class App extends Component {
       })
       .then(response => response.json())
       .then(data => {
-        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages, displayMessages: [], isUserListingSelectDisabled: false, selectedListingMlsID: '', selectedListingMlsNumber: '' });
+
+        this.setState({ messages: this.messageManager.resetMessages(), displayMessages: [], isUserListingSelectDisabled: false, selectedListingMlsID: '', selectedListingMlsNumber: '' });
         this.getAgentProfile();
         this.listingSelectRef.current.value = '';
         this.areaSelectRef.current.value = '';
@@ -403,7 +474,6 @@ class App extends Component {
   }
 
   async getAreaStatisticsPrompt(areaId, changeArea = false) {
-    const messages = this.state.messages.slice();
     const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
     const areaStatsptions = {
       method: 'POST',
@@ -425,42 +495,38 @@ class App extends Component {
     const areaStatsPrompts = [];
 
     if (!changeArea) {
-      areaStatsPrompts.push(`The following information is for the ${areaName} area.`);
+      areaStatsPrompts.push(`Information for ${areaName} area:`);
     } else {
-      areaStatsPrompts.push(`I want to focus on a new area. Let's focus on ${areaName}, please use the following information from now on and disregard the information I provided you earlier.`);
+      areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous information provided.`);
     }
 
     for (const lookback of statistics) {
 
-      areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+      areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
       for (const propLookback of lookback.propertyTypeStatistics) {
         const propTypeDescription = propLookback.propertyTypeDescription;
         const statistics = propLookback.statistics;
-        areaStatsPrompts.push(`For the ${propTypeDescription} type homes, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} in the last ${lookback.lookbackMonths} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+        areaStatsPrompts.push(`For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`);
       }
     }
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
     if (!changeArea) {
-      await this.addMessage("assistant", "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?");
-      messages.push({ role: "assistant", content: "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?" });
+      await this.addMessage("assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.");
 
       await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
+
     } else {
       await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
 
-      await this.addMessage("assistant", "Great! I'll use this area's information for my future recommendations.");
-      messages.push({ role: "assistant", content: "Great! I'll use this area's information for my future recommendations." });
+      await this.addMessage("assistant", "I'll use this area's info for future recommendations.");
     }
 
-    this.setState({ messages, selectedAreaName: areaName });
+    this.setState({ selectedAreaId: areaId, selectedAreaName: areaName });
   }
 
   async getPropertyProfile(mlsId, mlsNumber, changeListing = false) {
-    const messages = this.state.messages.slice();
     const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
     const requestOptions = {
       method: 'POST',
@@ -502,27 +568,21 @@ class App extends Component {
     const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
 
     if (!changeListing) {
-      const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
+      const assistantPrompt = "Do you have a specific MLS Listing for help today?";
 
       await this.addMessage("assistant", assistantPrompt);
-      messages.push({ role: "assistant", content: assistantPrompt });
 
-      const listingPrompt = `I have a new ${listingStatus} property located at: ${listingAddress} ${listingStatus === 'Active' ? 'Listed' : (listingStatus === 'Pending' ? 'Pending' : 'Sold')}
-      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
+      const listingPrompt = `New ${listingStatus} property at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
 
       await this.addMessage("user", listingPrompt);
-      messages.push({ role: "user", content: listingPrompt });
     } else {
-      const listingPrompt = `Let's shift gears. I have a new ${listingStatus} property that I want help with. It is located at: ${listingAddress}. It ${listingStatus === 'Active' ? 'is Listed' : (listingStatus === 'Pending' ? 'is Pending' : 'has Sold')}
-      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
+      const listingPrompt = `"New ${listingStatus} property for help at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
 
       await this.addMessage("user", listingPrompt);
-      messages.push({ role: "user", content: listingPrompt });
 
-      const assistantPrompt = "Great! I'll use this property's listing information from now on and disregard any previous listing and property information you provided.";
+      const assistantPrompt = "I'll use this property's info and disregard previous listing info.";
 
       await this.addMessage("assistant", assistantPrompt);
-      messages.push({ role: "assistant", content: assistantPrompt });
     }
     await this.getListingAreas();
     if (preferredAreaId > 0) {
@@ -548,23 +608,21 @@ class App extends Component {
       areaStatsPrompts.push(`This property exists in the ${areaName} neighborhood.`);
 
       for (const lookback of statistics) {
-        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+        areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
         const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
 
         if (propTypeStats.length > 0) {
           const propTypeDescription = propTypeStats[0].propertyTypeDescription;
           const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+          areaStatsPrompts.push(`For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`);
         }
       }
       const areaStatPrompt = areaStatsPrompts.join('\n');
 
-      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
-      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
+      await this.addMessage("assistant", "Do you have info about the area or neighborhood of this property?");
 
       await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
       this.setState({ selectedListingAreaId: preferredAreaId });
     }
     else {
@@ -590,27 +648,26 @@ class App extends Component {
       areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
 
       for (const lookback of statistics) {
-        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+        areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
         const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
 
         if (propTypeStats.length > 0) {
           const propTypeDescription = propTypeStats[0].propertyTypeDescription;
           const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
+          areaStatsPrompts.push(`For ${propTypeDescription} homes like this, avg. sale price: $${statistics.averageSalePrice.toLocaleString()}, avg. days on market: ${statistics.averageDaysOnMarket}, avg. price per sq. ft.: $${statistics.averagePricePerSqFt.toLocaleString()}."
+            3.) "Property in ${areaName} zip code.`);
         }
       }
       const areaStatPrompt = areaStatsPrompts.join('\n');
 
-      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
-      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
+      await this.addMessage("assistant", "Do you have info about the area or neighborhood of this property?");
 
       await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
       this.setState({ selectedListingAreaId: areaId });
     }
 
-    this.setState({ messages: messages, selectedListingAddress: listingAddress });
+    this.setState({ selectedListingAddress: listingAddress });
   }
 
   async getAgentProfile(event) {
@@ -634,20 +691,14 @@ class App extends Component {
     const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber ?? 'Not available';
     const about = agentInfo.marketingSettings.profile.about ?? 'Not available';
     const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url ?? '';
-    const messages = this.state.messages.slice();
 
-    const assistantPrompt = 'In order you assist you in the best possible way, can you provide me with more information about yourself and any relevant details I might need to optimize my content suggestions?';
+    const assistantPrompt = 'To assist you better, please provide more info about yourself and relevant details for content optimization.';
+    await this.addMessage("assistant", assistantPrompt, true);
 
-    await this.addMessage("assistant", assistantPrompt);
+    const agentPrompt = `Name: ${name}, display name: ${displayName} (use separate lines if different), email: ${email}, phone: ${phone}, website: ${website}, license: ${licenseNumber}, about: ${about}.`;
+    await this.addMessage("user", agentPrompt, true);
 
-    messages.push({ role: "assistant", content: assistantPrompt });
-
-    const agentPrompt = `Sure! My name is ${name}, my prefered display name for marketing purposes is ${displayName} so when constructing signature blocks, list my name and my display name as separate lines if they are different, my email address is ${email}, my phone number is ${phone}, my website is ${website}, my license number is ${licenseNumber}. A little about myself: ${about}`;
-
-    await this.addMessage("user", agentPrompt);
-
-    messages.push({ role: "user", content: agentPrompt });
-    this.setState({ messages: messages, isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
+    this.setState({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
     this.getUserListings();
     this.getUserAreas();
     this.hideLoading();
@@ -713,10 +764,19 @@ class App extends Component {
 
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            const userMessage = option.customPrompt;
+            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+    
+            if (!this.messageExists("user", userMessage)) {
+              await this.addMessage("user", userMessage, true);
+            }
+    
+            if (!this.messageExists("assistant", assistantMessage)) {
+              await this.addMessage("assistant", assistantMessage, true);
+            }
+    
             this.sendMessage(e);
           });
         }}>
@@ -724,13 +784,23 @@ class App extends Component {
         </button>
       );
     });
+    
 
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            const userMessage = option.customPrompt;
+            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+    
+            if (!this.messageExists("user", userMessage)) {
+              await this.addMessage("user", userMessage, true);
+            }
+    
+            if (!this.messageExists("assistant", assistantMessage)) {
+              await this.addMessage("assistant", assistantMessage, true);
+            }
+    
             this.sendMessage(e);
           });
         }}>
@@ -738,13 +808,23 @@ class App extends Component {
         </button>
       );
     });
+    
 
     const followupButtons = followupMenuItems.map((option, index) => {
       return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
+        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
+            const userMessage = option.customPrompt;
+            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+    
+            if (!this.messageExists("user", userMessage)) {
+              await this.addMessage("user", userMessage, true);
+            }
+    
+            if (!this.messageExists("assistant", assistantMessage)) {
+              await this.addMessage("assistant", assistantMessage, true);
+            }
+    
             this.sendMessage(e);
           });
         }}>
@@ -752,13 +832,13 @@ class App extends Component {
         </button>
       );
     });
-
+    
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
         <div
           key={index}
-          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""}`}
+          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""} ${msg.isFav ? "kit" : ""}`}
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
@@ -767,9 +847,16 @@ class App extends Component {
               {showCopyNotification[index] ? 'Copied!' : 'Copy'}
             </button>
           )}
+          {msg.role === "assistant" && msg.id && (
+          <span
+            className={`heart-icon ${msg.isFav ? "active" : ""}`}
+            onClick={() => this.handleToggleFavorite(msg.id)}
+          >
+            ❤️ 
+          </span>)}
         </div>
       );
-    });
+    });    
 
     return (
       <div className="App">

@@ -69,24 +69,7 @@ class App extends Component {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
     });
-    this.socket.on('message', this.handleMessage);
-    this.socket.on('emit_event', (data) => {
-      const callbackData = {...data.callback_data};
-      if (this.state.messagesTokenCount > 4000) {
-        callbackData.messages = this.messageManager.getMessages();
-      }
-
-      // call the callback function with the data provided by the server
-      this.socket.emit('callback_event', data.callback_data);
-      this.setState({ incomingChatInProgress: true });
-    });
-    this.socket.on('message_complete', (data) => {
-      const messageId = this.messageManager.addMessage("assistant", data.message);
-      this.assignMessageIdToDisplayMessage(data.message, messageId);
-      this.setState({ incomingChatInProgress: false });
-      this.textareaRef.current.focus();
-      console.log(this.messageManager.messages);
-    });    
+    //CONNECT
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
@@ -100,6 +83,27 @@ class App extends Component {
           .catch(error => console.error(error));
       });
     });
+    //MESSAGE
+    this.socket.on('message', this.handleMessage);
+    //EMIT_EVENT
+    this.socket.on('emit_event', (data) => {
+      const callbackData = {...data.callback_data};
+      if (this.state.messagesTokenCount > 4000) {
+        callbackData.messages = this.messageManager.getMessages();
+      }
+
+      // call the callback function with the data provided by the server
+      this.socket.emit('callback_event', data.callback_data);
+      this.setState({ incomingChatInProgress: true });
+    });
+    //MESSAGE_COMPLETE
+    this.socket.on('message_complete', (data) => {
+      const messageId = this.messageManager.addMessage("assistant", data.message);
+      this.assignMessageIdToDisplayMessage(data.message, messageId);
+      this.setState({ incomingChatInProgress: false });
+      this.textareaRef.current.focus();
+      console.log(this.messageManager.messages);
+    });    
   }
 
   componentWillUnmount() {

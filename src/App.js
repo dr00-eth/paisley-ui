@@ -54,9 +54,9 @@ class App extends Component {
       incomingChatInProgress: false,
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
-      writingStyle: 'luxury',
-      tone: 'friendly',
-      targetAudience: 'first_time_home_buyers',
+      writingStyle: '',
+      tone: '',
+      targetAudience: '',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -166,16 +166,16 @@ class App extends Component {
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         <div>
-          <label htmlFor="writing-style">Writing Style:</label>
-          <select value={writingStyle} onChange={this.handleWritingStyleChange} id="writing-style">
+          <select className='Content-dropdown vibe' value={writingStyle} onChange={this.handleWritingStyleChange} id="writing-style">
+            <option>--Select Writing Style--</option>
             <option value="luxury">Luxury</option>
             <option value="straightforward">Straightforward</option>
             <option value="professional">Professional</option>
           </select>
         </div>
         <div>
-          <label htmlFor="tone">Tone:</label>
-          <select value={tone} onChange={this.handleToneChange} id="tone">
+          <select className='Content-dropdown vibe' value={tone} onChange={this.handleToneChange} id="tone">
+            <option>--Select Tone--</option>
             <option value="friendly">Friendly</option>
             <option value="conversational">Conversational</option>
             <option value="to_the_point">To the Point</option>
@@ -183,11 +183,11 @@ class App extends Component {
           </select>
         </div>
         <div>
-          <label htmlFor="target-audience">Target Audience:</label>
-          <select value={targetAudience} onChange={this.handleTargetAudienceChange} id="target-audience">
+          <select className='Content-dropdown vibe' value={targetAudience} onChange={this.handleTargetAudienceChange} id="target-audience">
+            <option>--Select Target Audience--</option>
             <option value="first_time_home_buyers">First-Time Home Buyers</option>
             <option value="sellers">Sellers</option>
-            <option value="55+">55+</option>
+            <option value="55plus">55+</option>
           </select>
         </div>
       </div>
@@ -231,7 +231,6 @@ class App extends Component {
         Enhance Prompt
       </button>
     );
-
 
     const contextItems = contextOptions.map((option, index) => {
       return (
@@ -443,8 +442,9 @@ class App extends Component {
               }
             })()}
           </div>
-          <button onClick={this.toggleSwapVibe}>Swap Vibe</button>
-          {swapVibeSection}
+          <div className='swap-vibe-container'>
+            {swapVibeSection}
+          </div>
           <div id="chat-input">
             <select
               className='Context-dropdown'
@@ -455,26 +455,30 @@ class App extends Component {
               {contextItems}
             </select>
             <form onSubmit={(e) => sendMessage(this, e)}>
-              <textarea
-                value={messageInput}
-                ref={this.textareaRef}
-                className="chat-input-textarea"
-                onChange={(e) => this.setState({ messageInput: e.target.value })}
-                onInput={() => autoGrowTextarea(this.textareaRef)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage(this, e);
-                  }
-                }}
-                placeholder="Enter your message..."
-                disabled={isLoading || incomingChatInProgress}
-              />
+              <div className='chat-area'>
+                <textarea
+                  value={messageInput}
+                  ref={this.textareaRef}
+                  className="chat-input-textarea"
+                  onChange={(e) => this.setState({ messageInput: e.target.value })}
+                  onInput={() => autoGrowTextarea(this.textareaRef)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(this, e);
+                    }
+                  }}
+                  placeholder="Enter your message..."
+                  disabled={isLoading || incomingChatInProgress}
+                />
+                <button
+                    className='send-button'
+                    disabled={isLoading || incomingChatInProgress}
+                    type="submit"><svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+              </div>
               <div className='button-group'>
                 {EnhanceButtons}
-                <button
-                  disabled={isLoading || incomingChatInProgress}
-                  type="submit">Send</button>
+                <button onClick={this.toggleSwapVibe}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
                   onClick={(e) => resetChat(this, e)}>Reset Chat</button>

@@ -53,6 +53,10 @@ class App extends Component {
       selectedListingAddress: '',
       incomingChatInProgress: false,
       messagesTokenCount: 0,
+      isSwapVibeCollapsed: true,
+      writingStyle: 'luxury',
+      tone: 'friendly',
+      targetAudience: 'first_time_home_buyers',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -64,9 +68,9 @@ class App extends Component {
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
-    
-    
-    }
+
+
+  }
 
   componentDidMount() {
     this.socket = io(this.webSocketUrl, {
@@ -117,6 +121,24 @@ class App extends Component {
     scrollToBottom(this);
   }
 
+  toggleSwapVibe = () => {
+    this.setState((prevState) => ({
+      isSwapVibeCollapsed: !prevState.isSwapVibeCollapsed,
+    }));
+  };
+
+  handleWritingStyleChange = (e) => {
+    this.setState({ writingStyle: e.target.value });
+  };
+
+  handleToneChange = (e) => {
+    this.setState({ tone: e.target.value });
+  };
+
+  handleTargetAudienceChange = (e) => {
+    this.setState({ targetAudience: e.target.value });
+  };
+
   render() {
     const {
       context_id,
@@ -134,8 +156,42 @@ class App extends Component {
       selectedListingAreaId,
       isUserListingSelectDisabled,
       isUserAreaSelectDisabled,
-      showCopyNotification
+      showCopyNotification,
+      isSwapVibeCollapsed,
+      writingStyle,
+      tone,
+      targetAudience,
     } = this.state;
+
+    const swapVibeSection = (
+      <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
+        <div>
+          <label htmlFor="writing-style">Writing Style:</label>
+          <select value={writingStyle} onChange={this.handleWritingStyleChange} id="writing-style">
+            <option value="luxury">Luxury</option>
+            <option value="straightforward">Straightforward</option>
+            <option value="professional">Professional</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="tone">Tone:</label>
+          <select value={tone} onChange={this.handleToneChange} id="tone">
+            <option value="friendly">Friendly</option>
+            <option value="conversational">Conversational</option>
+            <option value="to_the_point">To the Point</option>
+            <option value="emotional">Emotional</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="target-audience">Target Audience:</label>
+          <select value={targetAudience} onChange={this.handleTargetAudienceChange} id="target-audience">
+            <option value="first_time_home_buyers">First-Time Home Buyers</option>
+            <option value="sellers">Sellers</option>
+            <option value="55+">55+</option>
+          </select>
+        </div>
+      </div>
+    );
 
     const copyToClipboard = (text, index) => {
       const turndownService = new TurndownService();
@@ -175,7 +231,7 @@ class App extends Component {
         Enhance Prompt
       </button>
     );
-    
+
 
     const contextItems = contextOptions.map((option, index) => {
       return (
@@ -387,6 +443,8 @@ class App extends Component {
               }
             })()}
           </div>
+          <button onClick={this.toggleSwapVibe}>Swap Vibe</button>
+          {swapVibeSection}
           <div id="chat-input">
             <select
               className='Context-dropdown'
@@ -413,7 +471,7 @@ class App extends Component {
                 disabled={isLoading || incomingChatInProgress}
               />
               <div className='button-group'>
-              {EnhanceButtons}
+                {EnhanceButtons}
                 <button
                   disabled={isLoading || incomingChatInProgress}
                   type="submit">Send</button>

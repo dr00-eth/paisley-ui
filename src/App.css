@@ -492,8 +492,10 @@ button.send-button {
   width: 40px;
   height: 40px;
   margin: 0;
-  right: 0;
-  bottom: 15%;
+  right: 15px;
+  box-shadow: none;
+  /* bottom: 15%; */
+  bottom: calc(100% - 50px);
 }
 
 button:hover {

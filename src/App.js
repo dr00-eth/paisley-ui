@@ -16,7 +16,8 @@ import {
   handleMessage,
   userSelectedListing,
   userSelectedArea,
-  userSelectedListingArea
+  userSelectedListingArea,
+  handleEnhancePromptClick
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -52,8 +53,6 @@ class App extends Component {
       selectedListingAddress: '',
       incomingChatInProgress: false,
       messagesTokenCount: 0,
-      enhancedprompt: '',
-      handleEnhancePromptClick:'',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -170,7 +169,7 @@ class App extends Component {
 
     const EnhanceButtons = (
       <button
-        onClick={this.handleEnhancePromptClick}
+        onClick={(e) => handleEnhancePromptClick(this)}
         disabled={isLoading || incomingChatInProgress || !messageInput}
       >
         Enhance Prompt

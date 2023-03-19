@@ -124,14 +124,14 @@ export async function userSelectedListing(context, event) {
     event.preventDefault();
     const [mlsID, mlsNumber] = event.target.value.split('_');
     context.setState({
-      selectedListingMlsID: mlsID,
-      selectedListingMlsNumber: mlsNumber
+        selectedListingMlsID: mlsID,
+        selectedListingMlsNumber: mlsNumber
     });
     showLoading(context);
     await getPropertyProfile(context, mlsID, mlsNumber, context.state.selectedListingMlsNumber ? true : false);
     hideLoading(context);
     generateListingKit(context);
-  }
+}
 
 export async function userSelectedArea(context, event) {
     event.preventDefault();
@@ -143,63 +143,57 @@ export async function userSelectedArea(context, event) {
     await getAreaStatisticsPrompt(context, areaId, context.state.selectedAreaId ? true : false);
     hideLoading(context);
     generateAreaKit(context);
-  }
+}
 
 export async function userSelectedListingArea(context, event) {
     event.preventDefault();
     const selectedListingAreaId = event.target.value;
     context.setState({
         selectedListingAreaId
-      });
+    });
     showLoading(context);
     await getAreaStatisticsPrompt(context, selectedListingAreaId, context.state.selectedListingAreaId ? true : false);
     hideLoading(context);
     context.generateAreaKit();
-  }
+}
 
-  export async function handleEnhancePrompt(context) {
-    // Call GPT model API to enhance the text input
-    const enhancedPrompt = await getEnhancedPrompt(context, context.state.messageInput);
-    context.setState({ enhancedPrompt });
-  }
-  
-  async function getEnhancedPrompt(context, text) {
+async function getEnhancedPrompt(text) {
     try {
-      const prompt = `Please rewrite the following text as the best prompt possible for what the user is trying to convey:\n\n${text}\n\nEnhanced text:`;
-      const response = await this.state.create({
-        engine: 'davinci-codex',
-        prompt,
-        max_tokens: 50,
-        n: 1,
-        stop: null,
-        temperature: 0.7,
-      });
-  
-      if (!response.choices || !response.choices.length) {
-        throw new Error('Failed to enhance prompt');
-      }
-  
-      const enhancedText = response.choices[0].text.trim();
-      return enhancedText;
-    } catch (error) {
-      console.error('Error enhancing prompt:', error);
-      return text;
-    }
-  }
+        const stopSequence = 'END_OF_IMPROVED_TEXT';
+        const prompt = `We have the following input text in English: "${text}". Please provide a more informative and clear version of this text, which will help a GPT model better understand the user's desired action.\n2. Rewrite the main idea in a clear and informative manner.\n3. Make sure the new text is in English and easy to understand but more clear than the input text.\n\nImproved text: ${stopSequence}`;
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: 'Bearer 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', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'text-davinci-003', prompt: prompt, max_tokens: 75, temperature: 1, stop: [stopSequence] }),
+        };
+        const response = await fetch(`https://api.openai.com/v1/completions`, requestOptions);
+        const enhancedPrompt = await response.json();
+        console.log(enhancedPrompt);
+        if (!enhancedPrompt.choices || !enhancedPrompt.choices.length) {
+            throw new Error('Failed to enhance prompt');
+        }
 
-  async function handleEnhancePromptClick() {
-    const { messageInput } = this.state;
+        const enhancedText = enhancedPrompt.choices[0].text.replace(stopSequence, '').trim();
+        return enhancedText;
+    } catch (error) {
+        console.error('Error enhancing prompt:', error);
+        return text;
+    }
+}
+
+
+export async function handleEnhancePromptClick(context) {
+    const { messageInput } = context.state;
     if (messageInput.trim() === "") return;
-  
-    this.setState({ isLoading: true });
-  
+
+    context.setState({ isLoading: true });
+
     try {
-      const enhancedMessage = await this.getEnhancedPrompt(messageInput);
-      this.setState({ messageInput: enhancedMessage });
+        const enhancedMessage = await getEnhancedPrompt(messageInput);
+        context.setState({ messageInput: enhancedMessage });
     } catch (error) {
-      console.error("Error enhancing message:", error);
+        console.error("Error enhancing message:", error);
     }
-  
-    this.setState({ isLoading: false });
-  }
-  
+
+    context.setState({ isLoading: false });
+}

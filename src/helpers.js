@@ -156,3 +156,50 @@ export async function userSelectedListingArea(context, event) {
     hideLoading(context);
     context.generateAreaKit();
   }
+
+  export async function handleEnhancePrompt(context) {
+    // Call GPT model API to enhance the text input
+    const enhancedPrompt = await getEnhancedPrompt(context, context.state.messageInput);
+    context.setState({ enhancedPrompt });
+  }
+  
+  async function getEnhancedPrompt(context, text) {
+    try {
+      const prompt = `Please rewrite the following text as the best prompt possible for what the user is trying to convey:\n\n${text}\n\nEnhanced text:`;
+      const response = await this.state.create({
+        engine: 'davinci-codex',
+        prompt,
+        max_tokens: 50,
+        n: 1,
+        stop: null,
+        temperature: 0.7,
+      });
+  
+      if (!response.choices || !response.choices.length) {
+        throw new Error('Failed to enhance prompt');
+      }
+  
+      const enhancedText = response.choices[0].text.trim();
+      return enhancedText;
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      return text;
+    }
+  }
+
+  async function handleEnhancePromptClick() {
+    const { messageInput } = this.state;
+    if (messageInput.trim() === "") return;
+  
+    this.setState({ isLoading: true });
+  
+    try {
+      const enhancedMessage = await this.getEnhancedPrompt(messageInput);
+      this.setState({ messageInput: enhancedMessage });
+    } catch (error) {
+      console.error("Error enhancing message:", error);
+    }
+  
+    this.setState({ isLoading: false });
+  }
+  

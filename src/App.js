@@ -5,9 +5,9 @@ import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
 import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
 import SmartMessageManager from './SmartMessageManager';
-import {  
-  scrollToBottom, 
-  autoGrowTextarea, 
+import {
+  scrollToBottom,
+  autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
   messageExists,
@@ -16,7 +16,8 @@ import {
   handleMessage,
   userSelectedListing,
   userSelectedArea,
-  userSelectedListingArea } from './helpers';
+  userSelectedListingArea
+} from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
 class App extends Component {
@@ -50,7 +51,9 @@ class App extends Component {
       selectedAreaName: '',
       selectedListingAddress: '',
       incomingChatInProgress: false,
-      messagesTokenCount: 0
+      messagesTokenCount: 0,
+      enhancedprompt: '',
+      handleEnhancePromptClick:'',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -62,7 +65,9 @@ class App extends Component {
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
-  }
+    
+    
+    }
 
   componentDidMount() {
     this.socket = io(this.webSocketUrl, {
@@ -87,7 +92,7 @@ class App extends Component {
     this.socket.on('message', (data) => handleMessage(this, data));
     //EMIT_EVENT
     this.socket.on('emit_event', (data) => {
-      const callbackData = {...data.callback_data};
+      const callbackData = { ...data.callback_data };
       if (this.state.messagesTokenCount > 4000) {
         callbackData.messages = this.messageManager.getMessages();
       }
@@ -101,7 +106,7 @@ class App extends Component {
       this.setState({ incomingChatInProgress: false });
       this.textareaRef.current.focus();
       console.log(this.messageManager.messages);
-    });    
+    });
   }
 
   componentWillUnmount() {
@@ -163,6 +168,16 @@ class App extends Component {
       { value: 3, label: 'Follow Up' },
     ];
 
+    const EnhanceButtons = (
+      <button
+        onClick={this.handleEnhancePromptClick}
+        disabled={isLoading || incomingChatInProgress || !messageInput}
+      >
+        Enhance Prompt
+      </button>
+    );
+    
+
     const contextItems = contextOptions.map((option, index) => {
       return (
         <option key={index} value={option.value}>
@@ -177,15 +192,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -200,15 +215,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -223,15 +238,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -239,7 +254,7 @@ class App extends Component {
         </button>
       );
     });
-    
+
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
@@ -255,15 +270,15 @@ class App extends Component {
             </button>
           )}
           {msg.role === "assistant" && msg.id && (
-          <span
-            className={`heart-icon ${msg.isFav ? "active" : ""}`}
-            onClick={() => handleToggleFavorite(this, msg.id)}
-          >
-            ❤️ 
-          </span>)}
+            <span
+              className={`heart-icon ${msg.isFav ? "active" : ""}`}
+              onClick={() => handleToggleFavorite(this, msg.id)}
+            >
+              ❤️
+            </span>)}
         </div>
       );
-    });    
+    });
 
     return (
       <div className="App">
@@ -399,6 +414,7 @@ class App extends Component {
                 disabled={isLoading || incomingChatInProgress}
               />
               <div className='button-group'>
+              {EnhanceButtons}
                 <button
                   disabled={isLoading || incomingChatInProgress}
                   type="submit">Send</button>

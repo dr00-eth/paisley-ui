@@ -442,9 +442,11 @@ class App extends Component {
               }
             })()}
           </div>
-          <div className='swap-vibe-container'>
-            {swapVibeSection}
-          </div>
+          {!this.state.isSwapVibeCollapsed && (
+            <div className='swap-vibe-container'>
+              {swapVibeSection}
+            </div>
+          )}
           <div id="chat-input">
             <select
               className='Context-dropdown'

@@ -494,7 +494,6 @@ button.send-button {
   margin: 0;
   right: 15px;
   box-shadow: none;
-  /* bottom: 15%; */
   bottom: calc(100% - 50px);
 }
 
@@ -686,10 +685,9 @@ button:focus {
 
 .swap-vibe-container {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  background-color: var(--primary-color);
-  padding: 10px;
 }
 
 .swap-vibe-toggle {

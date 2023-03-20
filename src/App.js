@@ -17,7 +17,11 @@ import {
   userSelectedListing,
   userSelectedArea,
   userSelectedListingArea,
-  handleEnhancePromptClick
+  handleEnhancePromptClick,
+  toggleSwapVibe,
+  handleTargetAudienceChange,
+  handleToneChange,
+  handleWritingStyleChange
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -121,24 +125,6 @@ class App extends Component {
     scrollToBottom(this);
   }
 
-  toggleSwapVibe = () => {
-    this.setState((prevState) => ({
-      isSwapVibeCollapsed: !prevState.isSwapVibeCollapsed,
-    }));
-  };
-
-  handleWritingStyleChange = (e) => {
-    this.setState({ writingStyle: e.target.value });
-  };
-
-  handleToneChange = (e) => {
-    this.setState({ tone: e.target.value });
-  };
-
-  handleTargetAudienceChange = (e) => {
-    this.setState({ targetAudience: e.target.value });
-  };
-
   render() {
     const {
       context_id,
@@ -166,7 +152,7 @@ class App extends Component {
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         <div>
-          <select className='Content-dropdown vibe' value={writingStyle} onChange={this.handleWritingStyleChange} id="writing-style">
+          <select className='Content-dropdown vibe' value={writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
             <option>--Select Writing Style--</option>
             <option value="luxury">Luxury</option>
             <option value="straightforward">Straightforward</option>
@@ -174,7 +160,7 @@ class App extends Component {
           </select>
         </div>
         <div>
-          <select className='Content-dropdown vibe' value={tone} onChange={this.handleToneChange} id="tone">
+          <select className='Content-dropdown vibe' value={tone} onChange={(e) => handleToneChange(this, e)} id="tone">
             <option>--Select Tone--</option>
             <option value="friendly">Friendly</option>
             <option value="conversational">Conversational</option>
@@ -183,7 +169,7 @@ class App extends Component {
           </select>
         </div>
         <div>
-          <select className='Content-dropdown vibe' value={targetAudience} onChange={this.handleTargetAudienceChange} id="target-audience">
+          <select className='Content-dropdown vibe' value={targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
             <option>--Select Target Audience--</option>
             <option value="first_time_home_buyers">First-Time Home Buyers</option>
             <option value="sellers">Sellers</option>
@@ -486,7 +472,7 @@ class App extends Component {
               </div>
               <div className='button-group'>
                 {EnhanceButtons}
-                <button onClick={this.toggleSwapVibe}>Vibe</button>
+                <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
                   onClick={(e) => resetChat(this, e)}>Reset Chat</button>

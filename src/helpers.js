@@ -200,3 +200,25 @@ export async function handleEnhancePromptClick(context, event) {
 
     context.setState({ isLoading: false });
 }
+
+export function toggleSwapVibe(context, e) {
+    e.preventDefault();
+    context.setState((prevState) => ({
+      isSwapVibeCollapsed: !prevState.isSwapVibeCollapsed,
+    }));
+  };
+
+export function handleWritingStyleChange(context, e) {
+    e.preventDefault();
+    context.setState({ writingStyle: e.target.value });
+  };
+
+export function handleToneChange(context, e) {
+    e.preventDefault();
+    context.setState({ tone: e.target.value });
+  };
+
+export function handleTargetAudienceChange(context, e) {
+    e.preventDefault();
+    context.setState({ targetAudience: e.target.value });
+  };

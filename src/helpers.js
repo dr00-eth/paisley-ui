@@ -233,6 +233,7 @@ export function handleTargetAudienceChange(context, e) {
 
 export function formatKey(str) {
     return str
+        .replace('plus','+')
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');

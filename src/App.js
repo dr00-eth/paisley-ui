@@ -5,9 +5,9 @@ import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
 import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
 import SmartMessageManager from './SmartMessageManager';
-import {  
-  scrollToBottom, 
-  autoGrowTextarea, 
+import {
+  scrollToBottom,
+  autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
   messageExists,
@@ -16,7 +16,13 @@ import {
   handleMessage,
   userSelectedListing,
   userSelectedArea,
-  userSelectedListingArea } from './helpers';
+  userSelectedListingArea,
+  handleEnhancePromptClick,
+  toggleSwapVibe,
+  handleTargetAudienceChange,
+  handleToneChange,
+  handleWritingStyleChange
+} from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
 class App extends Component {
@@ -50,7 +56,11 @@ class App extends Component {
       selectedAreaName: '',
       selectedListingAddress: '',
       incomingChatInProgress: false,
-      messagesTokenCount: 0
+      messagesTokenCount: 0,
+      isSwapVibeCollapsed: true,
+      writingStyle: '',
+      tone: '',
+      targetAudience: '',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -62,6 +72,8 @@ class App extends Component {
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
+
+
   }
 
   componentDidMount() {
@@ -87,7 +99,7 @@ class App extends Component {
     this.socket.on('message', (data) => handleMessage(this, data));
     //EMIT_EVENT
     this.socket.on('emit_event', (data) => {
-      const callbackData = {...data.callback_data};
+      const callbackData = { ...data.callback_data };
       if (this.state.messagesTokenCount > 4000) {
         callbackData.messages = this.messageManager.getMessages();
       }
@@ -101,7 +113,7 @@ class App extends Component {
       this.setState({ incomingChatInProgress: false });
       this.textareaRef.current.focus();
       console.log(this.messageManager.messages);
-    });    
+    });
   }
 
   componentWillUnmount() {
@@ -130,8 +142,42 @@ class App extends Component {
       selectedListingAreaId,
       isUserListingSelectDisabled,
       isUserAreaSelectDisabled,
-      showCopyNotification
+      showCopyNotification,
+      isSwapVibeCollapsed,
+      writingStyle,
+      tone,
+      targetAudience,
     } = this.state;
+
+    const swapVibeSection = (
+      <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
+        <div>
+          <select className='Content-dropdown vibe' value={writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
+            <option>--Select Writing Style--</option>
+            <option value="luxury">Luxury</option>
+            <option value="straightforward">Straightforward</option>
+            <option value="professional">Professional</option>
+          </select>
+        </div>
+        <div>
+          <select className='Content-dropdown vibe' value={tone} onChange={(e) => handleToneChange(this, e)} id="tone">
+            <option>--Select Tone--</option>
+            <option value="friendly">Friendly</option>
+            <option value="conversational">Conversational</option>
+            <option value="to_the_point">To the Point</option>
+            <option value="emotional">Emotional</option>
+          </select>
+        </div>
+        <div>
+          <select className='Content-dropdown vibe' value={targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
+            <option>--Select Target Audience--</option>
+            <option value="first_time_home_buyers">First-Time Home Buyers</option>
+            <option value="sellers">Sellers</option>
+            <option value="55plus">55+</option>
+          </select>
+        </div>
+      </div>
+    );
 
     const copyToClipboard = (text, index) => {
       const turndownService = new TurndownService();
@@ -163,6 +209,15 @@ class App extends Component {
       { value: 3, label: 'Follow Up' },
     ];
 
+    const EnhanceButtons = (
+      <button
+        onClick={(e) => handleEnhancePromptClick(this, e)}
+        disabled={isLoading || incomingChatInProgress || !messageInput}
+      >
+        Enhance Prompt
+      </button>
+    );
+
     const contextItems = contextOptions.map((option, index) => {
       return (
         <option key={index} value={option.value}>
@@ -177,15 +232,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -200,15 +255,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -223,15 +278,15 @@ class App extends Component {
           this.setState({ messageInput: e.target.value }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-    
+
             if (!messageExists(this, "user", userMessage)) {
               await addMessage(this, "user", userMessage, true);
             }
-    
+
             if (!messageExists(this, "assistant", assistantMessage)) {
               await addMessage(this, "assistant", assistantMessage, true);
             }
-    
+
             sendMessage(this, e);
           });
         }}>
@@ -239,7 +294,7 @@ class App extends Component {
         </button>
       );
     });
-    
+
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
@@ -255,15 +310,15 @@ class App extends Component {
             </button>
           )}
           {msg.role === "assistant" && msg.id && (
-          <span
-            className={`heart-icon ${msg.isFav ? "active" : ""}`}
-            onClick={() => handleToggleFavorite(this, msg.id)}
-          >
-            ❤️ 
-          </span>)}
+            <span
+              className={`heart-icon ${msg.isFav ? "active" : ""}`}
+              onClick={() => handleToggleFavorite(this, msg.id)}
+            >
+              ❤️
+            </span>)}
         </div>
       );
-    });    
+    });
 
     return (
       <div className="App">
@@ -373,6 +428,11 @@ class App extends Component {
               }
             })()}
           </div>
+          {!this.state.isSwapVibeCollapsed && (
+            <div className='swap-vibe-container'>
+              {swapVibeSection}
+            </div>
+          )}
           <div id="chat-input">
             <select
               className='Context-dropdown'
@@ -383,25 +443,36 @@ class App extends Component {
               {contextItems}
             </select>
             <form onSubmit={(e) => sendMessage(this, e)}>
-              <textarea
-                value={messageInput}
-                ref={this.textareaRef}
-                className="chat-input-textarea"
-                onChange={(e) => this.setState({ messageInput: e.target.value })}
-                onInput={() => autoGrowTextarea(this.textareaRef)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage(this, e);
-                  }
-                }}
-                placeholder="Enter your message..."
-                disabled={isLoading || incomingChatInProgress}
-              />
-              <div className='button-group'>
-                <button
+              <div className='chat-area'>
+                <textarea
+                  value={messageInput}
+                  ref={this.textareaRef}
+                  className="chat-input-textarea"
+                  onChange={(e) => this.setState({ messageInput: e.target.value })}
+                  onInput={() => autoGrowTextarea(this.textareaRef)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(this, e);
+                    }
+                  }}
+                  placeholder="Enter your message..."
                   disabled={isLoading || incomingChatInProgress}
-                  type="submit">Send</button>
+                />
+                <button
+                  className='send-button'
+                  disabled={isLoading || incomingChatInProgress}
+                  type="submit">
+                  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9"></polygon>
+                  </svg>
+
+                </button>
+              </div>
+              <div className='button-group'>
+                {EnhanceButtons}
+                <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
                   onClick={(e) => resetChat(this, e)}>Reset Chat</button>

@@ -122,20 +122,87 @@ export function generateListingKit(context) {
         });
 }
 
+function adjustVibe(context, message) {
+    const {tone, writingStyle, targetAudience} = context.state;
+    if (tone) {
+        switch (tone) {
+            case 'friendly':
+                message += '. Your reply tone should be friendly';
+                break;
+
+            case 'conversational':
+                message += '. Your reply tone should be conversational';
+                break;
+
+            case 'emotional':
+                message += '. Your reply tone should be emotional';
+                break;
+
+            case 'to_the_point':
+                message += '. Your reply tone should be straight and to the point';
+                break;
+            default:
+                break;
+        }
+    }
+    if (writingStyle) {
+        switch (writingStyle) {
+            case 'luxury':
+                message += '. Your writing style should be smooth and focusing on luxury';
+                break;
+
+            case 'straightforward':
+                message += '. Your writing style should be straightforward and to the point';
+                break;
+
+            case 'professional':
+                message += '. Your writing style should be written professionally';
+                break;
+
+            default:
+                break;
+        }
+    }
+    if (targetAudience) {
+        switch (targetAudience) {
+            case 'first_time_home_buyers':
+                message += '. Your response should be targeted to first time home buyers';
+                break;
+
+            case 'sellers':
+                message += '. Your response should be targeted to home sellers';
+                break;
+
+            case '55plus':
+                message += '. Your response should be targeted at the 55+ retirement community';
+                break;
+
+            default:
+                break;
+        }
+    }
+    context.setState({messageInput: message});
+    return message;
+}
+
 export async function sendMessage(context, event) {
     event.preventDefault();
-    const { messageInput, displayMessages, connection_id, context_id, gptModel } = context.state;
-    if (messageInput) {
-        const messageId = context.messageManager.addMessage("user", messageInput);
+    const { displayMessages, connection_id, context_id, gptModel, writingStyle, tone, targetAudience } = context.state;
+    let message = '';
+    if (context.state.messageInput) {
+        if (writingStyle || tone || targetAudience) {
+            message = adjustVibe(context, context.state.messageInput);
+        }
+        const messageId = context.messageManager.addMessage("user", context.state.messageInput);
         const updatedDisplayMessages = [...displayMessages, {
             role: 'user',
-            content: messageInput,
+            content: context.state.messageInput,
             id: messageId,
             isFav: false
         }];
 
         const requestBody = {
-            message: messageInput,
+            message: message ?? context.state.messageInput,
             user_id: connection_id,
             context_id: context_id
         }

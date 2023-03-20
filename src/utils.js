@@ -378,7 +378,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
         const listingStatus = property.statusType;
         const soldDate = property.soldDate;
         const listDate = property.listDate;
-        const squareFeet = property.squareFeet ?? 'Not provided';
+        const squareFeet = property.sqft ?? 'Not provided';
         const formatPrice = (price) => {
             return `$${price.toLocaleString()}`;
           };

@@ -1,9 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
+import UserMessage from './UserMessage';
 
 class SmartMessageManager {
   constructor() {
     this.deletedMsgs = [];
     this.messages = [];
+    this.userMessage = new UserMessage();
+  }
+
+  resetUserMessage() {
+    this.userMessage = new UserMessage();
   }
 
   addMessage(role, content, isFav = false) {

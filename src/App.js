@@ -21,7 +21,8 @@ import {
   toggleSwapVibe,
   handleTargetAudienceChange,
   handleToneChange,
-  handleWritingStyleChange
+  handleWritingStyleChange,
+  formatKey
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -34,6 +35,7 @@ class App extends Component {
       messages: this.messageManager.getMessages(),
       displayMessages: [],
       messageInput: '',
+      userMessage: this.messageManager.userMessage,
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
@@ -58,9 +60,6 @@ class App extends Component {
       incomingChatInProgress: false,
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
-      writingStyle: '',
-      tone: '',
-      targetAudience: '',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -129,7 +128,7 @@ class App extends Component {
     const {
       context_id,
       displayMessages,
-      messageInput,
+      userMessage,
       listings,
       areas,
       listingAreas,
@@ -144,24 +143,21 @@ class App extends Component {
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
-      writingStyle,
-      tone,
-      targetAudience,
     } = this.state;
 
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         <div>
-          <select className='Content-dropdown vibe' value={writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
-            <option>--Select Writing Style--</option>
+          <select className='Content-dropdown vibe' value={userMessage.writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
+            <option value="">--Select Writing Style--</option>
             <option value="luxury">Luxury</option>
             <option value="straightforward">Straightforward</option>
             <option value="professional">Professional</option>
           </select>
         </div>
         <div>
-          <select className='Content-dropdown vibe' value={tone} onChange={(e) => handleToneChange(this, e)} id="tone">
-            <option>--Select Tone--</option>
+          <select className='Content-dropdown vibe' value={userMessage.tone} onChange={(e) => handleToneChange(this, e)} id="tone">
+            <option value="">--Select Tone--</option>
             <option value="friendly">Friendly</option>
             <option value="conversational">Conversational</option>
             <option value="to_the_point">To the Point</option>
@@ -169,8 +165,8 @@ class App extends Component {
           </select>
         </div>
         <div>
-          <select className='Content-dropdown vibe' value={targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
-            <option>--Select Target Audience--</option>
+          <select className='Content-dropdown vibe' value={userMessage.targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
+            <option value="">--Select Target Audience--</option>
             <option value="first_time_home_buyers">First-Time Home Buyers</option>
             <option value="sellers">Sellers</option>
             <option value="55plus">55+</option>
@@ -212,7 +208,7 @@ class App extends Component {
     const EnhanceButtons = (
       <button
         onClick={(e) => handleEnhancePromptClick(this, e)}
-        disabled={isLoading || incomingChatInProgress || !messageInput}
+        disabled={isLoading || incomingChatInProgress || !userMessage.messageInput}
       >
         Enhance Prompt
       </button>
@@ -229,7 +225,8 @@ class App extends Component {
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
+          const newUserMessage = { ...userMessage, messageInput: e.target.value };
+          this.setState({ userMessage: newUserMessage }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
@@ -252,7 +249,8 @@ class App extends Component {
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
+          const newUserMessage = { ...userMessage, messageInput: e.target.value };
+          this.setState({ userMessage: newUserMessage }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
@@ -275,7 +273,8 @@ class App extends Component {
     const followupButtons = followupMenuItems.map((option, index) => {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
+          const newUserMessage = { ...userMessage, messageInput: e.target.value };
+          this.setState({ userMessage: newUserMessage }, async () => {
             const userMessage = option.customPrompt;
             const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
@@ -304,6 +303,16 @@ class App extends Component {
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
+          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience) && (
+            <div className="user-message-details" style={{ fontStyle: 'italic', fontSize: 'small' }}>
+              {msg.tone && <span>Tone: {formatKey(msg.tone)}</span>}
+              {msg.tone && msg.writingStyle && <span>, </span>}
+              {msg.writingStyle && <span>Writing Style: {formatKey(msg.writingStyle)}</span>}
+              {(msg.tone || msg.writingStyle) && msg.targetAudience && <span>, </span>}
+              {msg.targetAudience && <span>Target Audience: {formatKey(msg.targetAudience)}</span>}
+            </div>
+          )}
+
           {msg.role === "assistant" && (
             <button className='copy-icon' onClick={() => copyToClipboard(content, index)}>
               {showCopyNotification[index] ? 'Copied!' : 'Copy'}
@@ -319,6 +328,7 @@ class App extends Component {
         </div>
       );
     });
+
 
     return (
       <div className="App">
@@ -445,10 +455,13 @@ class App extends Component {
             <form onSubmit={(e) => sendMessage(this, e)}>
               <div className='chat-area'>
                 <textarea
-                  value={messageInput}
+                  value={userMessage.messageInput}
                   ref={this.textareaRef}
                   className="chat-input-textarea"
-                  onChange={(e) => this.setState({ messageInput: e.target.value })}
+                  onChange={(e) => {
+                    const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                    this.setState({ userMessage: newUserMessage })
+                  }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {

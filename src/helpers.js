@@ -33,7 +33,7 @@ export function autoGrowTextarea(textareaRef) {
 export async function waitForIncomingChatToFinish(context) {
     const { incomingChatInProgress } = context.state;
     while (incomingChatInProgress) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 2500));
     }
 }
 
@@ -78,6 +78,7 @@ export async function resetChat(context, event) {
 
         context.setState({
             messages: context.messageManager.resetMessages(),
+            userMessage: context.messageManager.resetUserMessage(),
             displayMessages: [],
             isUserListingSelectDisabled: false,
             selectedListingMlsID: '',
@@ -173,7 +174,7 @@ async function getEnhancedPrompt(text) {
             throw new Error('Failed to enhance prompt');
         }
 
-        const enhancedText = enhancedPrompt.choices[0].text.replace(stopSequence, '').replace('"','').trim();
+        const enhancedText = enhancedPrompt.choices[0].text.replace(stopSequence, '').replace('"', '').trim();
         return enhancedText;
     } catch (error) {
         console.error('Error enhancing prompt:', error);
@@ -184,41 +185,55 @@ async function getEnhancedPrompt(text) {
 
 export async function handleEnhancePromptClick(context, event) {
     event.preventDefault();
-    const { messageInput } = context.state;
-    if (messageInput.trim() === "") return;
+    const { userMessage } = context.state;
+    if (userMessage.messageInput.trim() === "") return;
 
-    context.setState({ isLoading: true });
+    showLoading(context);
 
     try {
         showLoading(context);
-        const enhancedMessage = await getEnhancedPrompt(messageInput);
+        const enhancedMessage = await getEnhancedPrompt(userMessage.messageInput);
+        const newUserMessage = { ...userMessage, messageInput: enhancedMessage };
+        console.log(newUserMessage);
         hideLoading(context);
-        context.setState({ messageInput: enhancedMessage });
+        context.setState({ userMessage: newUserMessage });
     } catch (error) {
+        hideLoading(context);
         console.error("Error enhancing message:", error);
     }
-
-    context.setState({ isLoading: false });
 }
 
 export function toggleSwapVibe(context, e) {
     e.preventDefault();
     context.setState((prevState) => ({
-      isSwapVibeCollapsed: !prevState.isSwapVibeCollapsed,
+        isSwapVibeCollapsed: !prevState.isSwapVibeCollapsed,
     }));
-  };
+};
 
 export function handleWritingStyleChange(context, e) {
     e.preventDefault();
-    context.setState({ writingStyle: e.target.value });
-  };
+    const newUserMessage = { ...context.state.userMessage, writingStyle: e.target.value };
+    console.log(newUserMessage);
+    context.setState({ userMessage: newUserMessage });
+};
 
 export function handleToneChange(context, e) {
     e.preventDefault();
-    context.setState({ tone: e.target.value });
-  };
+    const newUserMessage = { ...context.state.userMessage, tone: e.target.value };
+    console.log(newUserMessage);
+    context.setState({ userMessage: newUserMessage });
+};
 
 export function handleTargetAudienceChange(context, e) {
     e.preventDefault();
-    context.setState({ targetAudience: e.target.value });
-  };
+    const newUserMessage = { ...context.state.userMessage, targetAudience: e.target.value };
+    console.log(newUserMessage);
+    context.setState({ userMessage: newUserMessage });
+};
+
+export function formatKey(str) {
+    return str
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};  

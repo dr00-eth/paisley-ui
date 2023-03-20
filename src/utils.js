@@ -72,7 +72,7 @@ export async function getListingAreas(context) {
 }
 
 export function generateAreaKit(context) {
-    const { agentProfileUserId, selectedAreaId, selectedAreaName, displayMessages } = context.state;
+    const { agentProfileUserId, selectedAreaId, selectedAreaName } = context.state;
     const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,6 +86,7 @@ export function generateAreaKit(context) {
             const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
             setTimeout(async () => {
                 await waitForIncomingChatToFinish(context);
+                const { displayMessages } = context.state;
                 const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
                 context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: kitUrl });
             }, 30000);
@@ -97,7 +98,7 @@ export function generateAreaKit(context) {
 }
 
 export function generateListingKit(context) {
-    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedListingAddress, displayMessages } = context.state;
+    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedListingAddress } = context.state;
     const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,6 +112,7 @@ export function generateListingKit(context) {
             const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
             setTimeout(async () => {
                 await waitForIncomingChatToFinish(context);
+                const { displayMessages } = context.state;
                 const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
                 context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: kitUrl });
             }, 30000);
@@ -122,24 +124,25 @@ export function generateListingKit(context) {
         });
 }
 
-function adjustVibe(context, message) {
-    const {tone, writingStyle, targetAudience} = context.state;
+function adjustVibe(context, userMessage) {
+    const {tone, writingStyle, targetAudience, messageInput} = userMessage;
+    let vibedMessage = messageInput;
     if (tone) {
         switch (tone) {
             case 'friendly':
-                message += '. Your reply tone should be friendly';
+                vibedMessage += '. Your reply tone should be friendly';
                 break;
 
             case 'conversational':
-                message += '. Your reply tone should be conversational';
+                vibedMessage += '. Your reply tone should be conversational';
                 break;
 
             case 'emotional':
-                message += '. Your reply tone should be emotional';
+                vibedMessage += '. Your reply tone should be emotional';
                 break;
 
             case 'to_the_point':
-                message += '. Your reply tone should be straight and to the point';
+                vibedMessage += '. Your reply tone should be straight and to the point';
                 break;
             default:
                 break;
@@ -148,15 +151,15 @@ function adjustVibe(context, message) {
     if (writingStyle) {
         switch (writingStyle) {
             case 'luxury':
-                message += '. Your writing style should be smooth and focusing on luxury';
+                vibedMessage += '. Your writing style should be smooth and focusing on luxury';
                 break;
 
             case 'straightforward':
-                message += '. Your writing style should be straightforward and to the point';
+                vibedMessage += '. Your writing style should be straightforward and to the point';
                 break;
 
             case 'professional':
-                message += '. Your writing style should be written professionally';
+                vibedMessage += '. Your writing style should be written professionally';
                 break;
 
             default:
@@ -166,43 +169,45 @@ function adjustVibe(context, message) {
     if (targetAudience) {
         switch (targetAudience) {
             case 'first_time_home_buyers':
-                message += '. Your response should be targeted to first time home buyers';
+                vibedMessage += '. Your response should be targeted to first time home buyers';
                 break;
 
             case 'sellers':
-                message += '. Your response should be targeted to home sellers';
+                vibedMessage += '. Your response should be targeted to home sellers';
                 break;
 
             case '55plus':
-                message += '. Your response should be targeted at the 55+ retirement community';
+                vibedMessage += '. Your response should be targeted at the 55+ retirement community';
                 break;
 
             default:
                 break;
         }
     }
-    context.setState({messageInput: message});
-    return message;
+    return vibedMessage;
 }
 
 export async function sendMessage(context, event) {
     event.preventDefault();
-    const { displayMessages, connection_id, context_id, gptModel, writingStyle, tone, targetAudience } = context.state;
+    const { displayMessages, connection_id, context_id, gptModel, userMessage } = context.state;
     let message = '';
-    if (context.state.messageInput) {
-        if (writingStyle || tone || targetAudience) {
-            message = adjustVibe(context, context.state.messageInput);
+    if (userMessage) {
+        if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience) {
+            message = adjustVibe(context, userMessage);
         }
-        const messageId = context.messageManager.addMessage("user", context.state.messageInput);
+        const messageId = context.messageManager.addMessage("user", userMessage.messageInput);
         const updatedDisplayMessages = [...displayMessages, {
             role: 'user',
-            content: context.state.messageInput,
+            content: userMessage.messageInput,
             id: messageId,
-            isFav: false
+            isFav: false,
+            tone: userMessage.tone,
+            writingStyle: userMessage.writingStyle,
+            targetAudience: userMessage.targetAudience
         }];
 
         const requestBody = {
-            message: message ?? context.state.messageInput,
+            message: message ?? userMessage.messageInput,
             user_id: connection_id,
             context_id: context_id
         }
@@ -223,7 +228,8 @@ export async function sendMessage(context, event) {
                 }
             })
             .catch(error => console.error(error));
-        context.setState({ messages: context.messageManager.getMessages(), displayMessages: updatedDisplayMessages, messageInput: '' });
+        const newUserMessage = {...userMessage, messageInput: ""}
+        context.setState({ messages: context.messageManager.getMessages(), displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
 
         const tokenChkBody = {
             messages: context.messageManager.getMessages(),

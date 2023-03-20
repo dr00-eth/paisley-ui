@@ -52,7 +52,6 @@ export function handleToggleFavorite(context, id) {
     context.setState({ messages: context.messageManager.getMessages() }, () => {
         updateDisplayMessagesWithFavorites(context);
     });
-    console.log(context.messageManager.messages);
 }
 
 export function messageExists(context, role, content) {
@@ -170,7 +169,6 @@ async function getEnhancedPrompt(text) {
         };
         const response = await fetch(`https://api.openai.com/v1/completions`, requestOptions);
         const enhancedPrompt = await response.json();
-        console.log(enhancedPrompt);
         if (!enhancedPrompt.choices || !enhancedPrompt.choices.length) {
             throw new Error('Failed to enhance prompt');
         }
@@ -195,7 +193,6 @@ export async function handleEnhancePromptClick(context, event) {
         showLoading(context);
         const enhancedMessage = await getEnhancedPrompt(userMessage.messageInput);
         const newUserMessage = { ...userMessage, messageInput: enhancedMessage };
-        console.log(newUserMessage);
         hideLoading(context);
         context.setState({ userMessage: newUserMessage });
     } catch (error) {
@@ -214,21 +211,18 @@ export function toggleSwapVibe(context, e) {
 export function handleWritingStyleChange(context, e) {
     e.preventDefault();
     const newUserMessage = { ...context.state.userMessage, writingStyle: e.target.value };
-    console.log(newUserMessage);
     context.setState({ userMessage: newUserMessage });
 };
 
 export function handleToneChange(context, e) {
     e.preventDefault();
     const newUserMessage = { ...context.state.userMessage, tone: e.target.value };
-    console.log(newUserMessage);
     context.setState({ userMessage: newUserMessage });
 };
 
 export function handleTargetAudienceChange(context, e) {
     e.preventDefault();
     const newUserMessage = { ...context.state.userMessage, targetAudience: e.target.value };
-    console.log(newUserMessage);
     context.setState({ userMessage: newUserMessage });
 };
 

@@ -114,7 +114,6 @@ class App extends Component {
       assignMessageIdToDisplayMessage(this, data.message, messageId);
       this.setState({ incomingChatInProgress: false });
       this.textareaRef.current.focus();
-      console.log(this.messageManager.messages);
     });
   }
 

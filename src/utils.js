@@ -68,7 +68,7 @@ export async function getAreaUserListings(context, areaId) {
                 if (property.statusType !== "Sold") {
                   return true;
                 } else {
-                  return daysAgo > 30;
+                  return daysAgo < 90;
                 }
               });
             // sort listings by listDate descending
@@ -368,7 +368,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
 
   if (context.state.areaUserListings.length > 0) {
     areaStatsPrompts.push(`I have some of my own listings to showcase in ${areaName}.`)
-    console.log("area listings",context.state.areaUserListings);
+
     for (const property of context.state.areaUserListings) {
         const listingAddress = property.streetNumber + ' ' + property.streetName + (property.unitNumber ? ` #${property.unitNumber}`: '');
         const mlsNumber = property.mlsNumber;

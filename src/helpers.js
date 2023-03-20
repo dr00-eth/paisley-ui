@@ -173,7 +173,7 @@ async function getEnhancedPrompt(text) {
             throw new Error('Failed to enhance prompt');
         }
 
-        const enhancedText = enhancedPrompt.choices[0].text.replace(stopSequence, '').trim();
+        const enhancedText = enhancedPrompt.choices[0].text.replace(stopSequence, '').replace('"','').trim();
         return enhancedText;
     } catch (error) {
         console.error('Error enhancing prompt:', error);
@@ -182,14 +182,17 @@ async function getEnhancedPrompt(text) {
 }
 
 
-export async function handleEnhancePromptClick(context) {
+export async function handleEnhancePromptClick(context, event) {
+    event.preventDefault();
     const { messageInput } = context.state;
     if (messageInput.trim() === "") return;
 
     context.setState({ isLoading: true });
 
     try {
+        showLoading(context);
         const enhancedMessage = await getEnhancedPrompt(messageInput);
+        hideLoading(context);
         context.setState({ messageInput: enhancedMessage });
     } catch (error) {
         console.error("Error enhancing message:", error);

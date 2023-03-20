@@ -127,19 +127,19 @@ function adjustVibe(context, message) {
     if (tone) {
         switch (tone) {
             case 'friendly':
-                message += '. Your reply tone should be friendly.';
+                message += '. Your reply tone should be friendly';
                 break;
 
             case 'conversational':
-                message += '. Your reply tone should be conversational.';
+                message += '. Your reply tone should be conversational';
                 break;
 
             case 'emotional':
-                message += '. Your reply tone should be emotional.';
+                message += '. Your reply tone should be emotional';
                 break;
 
             case 'to_the_point':
-                message += '. Your reply tone should be straight and to the point.';
+                message += '. Your reply tone should be straight and to the point';
                 break;
             default:
                 break;
@@ -148,15 +148,15 @@ function adjustVibe(context, message) {
     if (writingStyle) {
         switch (writingStyle) {
             case 'luxury':
-                message += '. Your writing style should be smooth and focusing on luxury.';
+                message += '. Your writing style should be smooth and focusing on luxury';
                 break;
 
             case 'straightforward':
-                message += '. Your writing style should be straightforward and to the point.';
+                message += '. Your writing style should be straightforward and to the point';
                 break;
 
             case 'professional':
-                message += '. Your writing style should be written professionally.';
+                message += '. Your writing style should be written professionally';
                 break;
 
             default:
@@ -166,15 +166,15 @@ function adjustVibe(context, message) {
     if (targetAudience) {
         switch (targetAudience) {
             case 'first_time_home_buyers':
-                message += '. Your response should be targeted to first time home buyers.';
+                message += '. Your response should be targeted to first time home buyers';
                 break;
 
             case 'sellers':
-                message += '. Your response should be targeted to home sellers.';
+                message += '. Your response should be targeted to home sellers';
                 break;
 
             case '55plus':
-                message += '. Your response should be targeted at the 55+ retirement community.';
+                message += '. Your response should be targeted at the 55+ retirement community';
                 break;
 
             default:
@@ -192,7 +192,6 @@ export async function sendMessage(context, event) {
     if (context.state.messageInput) {
         if (writingStyle || tone || targetAudience) {
             message = adjustVibe(context, context.state.messageInput);
-            console.log(message);
             context.setState({messageInput: message});
         }
         const messageId = context.messageManager.addMessage("user", message ?? context.state.messageInput);

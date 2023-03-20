@@ -50,6 +50,38 @@ export async function getUserListings(context) {
         });
 }
 
+export async function getAreaUserListings(context, areaId) {
+    const { agentProfileUserId } = context.state;
+    const requestOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false, areaId: areaId }),
+    }
+    await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
+        .then(async (response) => await response.json())
+        .then(data => {
+            // filter properties with listDate > 60 days ago
+            const areaUserListings = data.properties.filter(property => {
+                const listDate = new Date(property.listDate);
+                const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
+              
+                if (property.statusType !== "Sold") {
+                  return true;
+                } else {
+                  return daysAgo > 30;
+                }
+              });
+            // sort listings by listDate descending
+            areaUserListings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
+            // update state with fetched listings
+            context.setState({ areaUserListings: areaUserListings });
+        })
+        .catch(error => {
+            // handle error
+            console.error(error);
+        });
+}
+
 export async function getListingAreas(context) {
     const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber } = context.state;
     const requestOptions = {
@@ -207,7 +239,7 @@ export async function sendMessage(context, event) {
         }];
 
         const requestBody = {
-            message: message ?? userMessage.messageInput,
+            message: message !== '' ? message : userMessage.messageInput,
             user_id: connection_id,
             context_id: context_id
         }
@@ -334,6 +366,34 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous information provided.`);
   }
 
+  if (context.state.areaUserListings.length > 0) {
+    areaStatsPrompts.push(`I have some of my own listings to showcase in ${areaName}.`)
+    console.log("area listings",context.state.areaUserListings);
+    for (const property of context.state.areaUserListings) {
+        const listingAddress = property.streetNumber + ' ' + property.streetName + (property.unitNumber ? ` #${property.unitNumber}`: '');
+        const mlsNumber = property.mlsNumber;
+        const bedrooms = property.bedrooms;
+        const totalBathrooms = property.bathroomsTotal;
+        const propertyType = property.propertyTypeId === 0 ? 'Single Family Detached' : 'Condo/Townhome';
+        const listingStatus = property.statusType;
+        const soldDate = property.soldDate;
+        const listDate = property.listDate;
+        const squareFeet = property.squareFeet ?? 'Not provided';
+        const formatPrice = (price) => {
+            return `$${price.toLocaleString()}`;
+          };
+        const priceStr = listingStatus === "Sold"
+        ? `sold ${soldDate} for ${formatPrice(property.salePrice)}`
+        : (property.priceHigh
+            ? `listed ${listDate} for ${formatPrice(property.priceLow)} - ${formatPrice(property.priceHigh)}`
+            : `listed ${listDate} for ${formatPrice(property.priceLow)}`
+        );
+
+        const listingPrompt = `${listingStatus} status property at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber} Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, Sq. Ft.: ${squareFeet}`;
+        areaStatsPrompts.push(listingPrompt);
+    }
+  }
+  
   for (const lookback of statistics) {
 
     areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);

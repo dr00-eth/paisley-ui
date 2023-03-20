@@ -1,4 +1,4 @@
-import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile } from "./utils";
+import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile, getAreaUserListings } from "./utils";
 
 export function updateDisplayMessagesWithFavorites(context) {
     const { displayMessages, messages } = context.state;
@@ -137,11 +137,12 @@ export async function userSelectedListing(context, event) {
 export async function userSelectedArea(context, event) {
     event.preventDefault();
     const areaId = event.target.value;
+    showLoading(context);
+    await getAreaUserListings(context, areaId);
+    await getAreaStatisticsPrompt(context, areaId, context.state.selectedAreaId ? true : false);
     context.setState({
         selectedAreaId: areaId
     });
-    showLoading(context);
-    await getAreaStatisticsPrompt(context, areaId, context.state.selectedAreaId ? true : false);
     hideLoading(context);
     generateAreaKit(context);
 }

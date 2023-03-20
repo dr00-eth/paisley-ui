@@ -52,6 +52,7 @@ class App extends Component {
       agentProfileImage: '',
       listings: [],
       areas: [],
+      areaUserListings: [],
       listingAreas: [],
       listingKitUrl: '',
       areaKitUrl: '',
@@ -71,8 +72,6 @@ class App extends Component {
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
-
-
   }
 
   componentDidMount() {

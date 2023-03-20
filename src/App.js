@@ -3,7 +3,11 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
-import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
+import {
+  LISTINGMENUITEMS as listingMenuItems,
+  AREAMENUITEMS as areaMenuItems,
+  FOLLOWUPMENUITEMS as followupMenuItems,
+} from './constants'
 import SmartMessageManager from './SmartMessageManager';
 import {
   scrollToBottom,

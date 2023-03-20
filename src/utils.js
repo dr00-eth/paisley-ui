@@ -68,7 +68,7 @@ export async function getAreaUserListings(context, areaId) {
                 if (property.statusType !== "Sold") {
                   return true;
                 } else {
-                  return daysAgo > 30;
+                  return daysAgo < 90;
                 }
               });
             // sort listings by listDate descending

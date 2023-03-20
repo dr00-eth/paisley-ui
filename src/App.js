@@ -205,6 +205,7 @@ class App extends Component {
       { value: 1, label: 'Area Focused' },
       { value: 2, label: 'RE Coaching' },
       { value: 3, label: 'Follow Up' },
+      { value: 4, label: 'ChatGPT'}
     ];
 
     const EnhanceButtons = (
@@ -434,6 +435,8 @@ class App extends Component {
                   return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";
                 } else if (context_id === 3) {
                   return "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!";
+                } else if (context_id === 4) {
+                  return "Hi, I'm Paisley - in this context you can ask me anything you would like. I am not trained on any particular information and can answer questions about any topic."
                 }
               } else {
                 return messages;

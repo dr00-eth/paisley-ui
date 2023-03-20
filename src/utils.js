@@ -192,12 +192,11 @@ export async function sendMessage(context, event) {
     if (context.state.messageInput) {
         if (writingStyle || tone || targetAudience) {
             message = adjustVibe(context, context.state.messageInput);
-            context.setState({messageInput: message});
         }
-        const messageId = context.messageManager.addMessage("user", message ?? context.state.messageInput);
+        const messageId = context.messageManager.addMessage("user", context.state.messageInput);
         const updatedDisplayMessages = [...displayMessages, {
             role: 'user',
-            content: message ?? context.state.messageInput,
+            content: context.state.messageInput,
             id: messageId,
             isFav: false
         }];

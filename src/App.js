@@ -28,7 +28,8 @@ import {
   handleWritingStyleChange,
   formatKey,
   getConversations,
-  userSelectedConversation
+  userSelectedConversation,
+  updateConversation
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -51,6 +52,7 @@ class App extends Component {
       isUserAreaSelectDisabled: false,
       isLoading: false,
       showCopyNotification: {},
+      selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
@@ -68,6 +70,7 @@ class App extends Component {
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
       conversations: [],
+      conversationsList: [],
       currentConversation: '',
     };
     this.chatDisplayRef = React.createRef();
@@ -75,8 +78,8 @@ class App extends Component {
     this.textareaRef = React.createRef();
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     //this.workerUrl = 'http://127.0.0.1:8787/fetch'
-    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
-    //this.apiServerUrl = 'http://127.0.0.1:8008';
+    //this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
+    this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
     } else {
@@ -94,12 +97,16 @@ class App extends Component {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
-          .then(response => response.json())
-          .then(async () => {
+          .then(async response => await response.json())
+          .then(async (data) => {
+            for (const message of data) {
+              this.messageManager.addMessage(message.role, message.content, true);
+              console.log(this.messageManager.messages);
+            }
             if (this.state.agentProfileUserId) {
               await getAgentProfile(this);
-              const [conversationsLite, _] = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
-              this.setState({ conversations: conversationsLite});
+              const {modifiedStates, states} = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
             }
           })
           .catch(error => console.error(error));
@@ -108,19 +115,19 @@ class App extends Component {
     //MESSAGE
     this.socket.on('message', (data) => handleMessage(this, data));
     //EMIT_EVENT
-    this.socket.on('emit_event', (data) => {
+    this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
-      if (this.state.messagesTokenCount > 4000) {
-        callbackData.messages = this.messageManager.getMessages();
-      }
-      this.socket.emit('callback_event', data.callback_data);
+      callbackData.messages = this.messageManager.getMessages();
+      console.log(this.messageManager.getMessages());
+      this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true });
     });
     //MESSAGE_COMPLETE
-    this.socket.on('message_complete', (data) => {
+    this.socket.on('message_complete', async (data) => {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       assignMessageIdToDisplayMessage(this, data.message, messageId);
-      this.setState({ incomingChatInProgress: false });
+      await updateConversation(this);
+      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
   }
@@ -132,6 +139,12 @@ class App extends Component {
 
   componentDidUpdate() {
     scrollToBottom(this);
+  }
+
+  setStateAsync = function (newState) {
+    return new Promise((resolve) => {
+      this.setState(newState, resolve);
+    });
   }
 
   render() {
@@ -149,11 +162,15 @@ class App extends Component {
       agentProfileImage,
       agentProfileUserId,
       selectedListingAreaId,
+      selectedAreaId,
       isUserListingSelectDisabled,
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
-      conversations
+      conversationsList,
+      currentConversation,
+      selectedListingMlsID,
+      selectedListingMlsNumber
     } = this.state;
 
     const swapVibeSection = (
@@ -398,7 +415,7 @@ class App extends Component {
               </form>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
+                  <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
                     <option value="">-- Select Listing --</option>
                     {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
@@ -420,10 +437,10 @@ class App extends Component {
               )}
               {context_id === 1 && agentProfileUserId && areas.length > 0 && (
                 <div className='sidebar-section areaSelectBox'>
-                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
+                  <select value={selectedAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
                     <option value="">-- Select Area --</option>
-                    {areas.map((area, index) => (
-                      <option key={index} value={area.areaId}>
+                    {areas.map((area) => (
+                      <option key={area.areaId} value={area.areaId}>
                         {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
                       </option>
                     ))}
@@ -450,10 +467,10 @@ class App extends Component {
           </div>
         </div>
         <div className='main-content'>
-          <div id="convesation-select">
-            <select ref={this.conversationSelectRef} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
+          <div id="conversation-select">
+            <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
               <option value="">-- Select Conversation --</option>
-              {conversations.length > 0 && conversations.map((conversation, index) => (
+              {conversationsList.length > 0 && conversationsList.map((conversation, index) => (
                 <option key={index} value={conversation.id}>
                   {conversation.name}
                 </option>

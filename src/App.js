@@ -26,7 +26,10 @@ import {
   handleTargetAudienceChange,
   handleToneChange,
   handleWritingStyleChange,
-  formatKey
+  formatKey,
+  getConversations,
+  userSelectedConversation,
+  updateConversation
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -49,6 +52,7 @@ class App extends Component {
       isUserAreaSelectDisabled: false,
       isLoading: false,
       showCopyNotification: {},
+      selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
@@ -65,10 +69,15 @@ class App extends Component {
       incomingChatInProgress: false,
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
+      conversations: [],
+      conversationsList: [],
+      currentConversation: '',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
+    this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
+    //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
@@ -88,10 +97,16 @@ class App extends Component {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
-          .then(response => response.json())
-          .then(() => {
+          .then(async response => await response.json())
+          .then(async (data) => {
+            for (const message of data) {
+              this.messageManager.addMessage(message.role, message.content, true);
+              console.log(this.messageManager.messages);
+            }
             if (this.state.agentProfileUserId) {
-              getAgentProfile(this);
+              await getAgentProfile(this);
+              const {modifiedStates, states} = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
             }
           })
           .catch(error => console.error(error));
@@ -100,19 +115,19 @@ class App extends Component {
     //MESSAGE
     this.socket.on('message', (data) => handleMessage(this, data));
     //EMIT_EVENT
-    this.socket.on('emit_event', (data) => {
+    this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
-      if (this.state.messagesTokenCount > 4000) {
-        callbackData.messages = this.messageManager.getMessages();
-      }
-      this.socket.emit('callback_event', data.callback_data);
+      callbackData.messages = this.messageManager.getMessages();
+      console.log(this.messageManager.getMessages());
+      this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true });
     });
     //MESSAGE_COMPLETE
-    this.socket.on('message_complete', (data) => {
+    this.socket.on('message_complete', async (data) => {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       assignMessageIdToDisplayMessage(this, data.message, messageId);
-      this.setState({ incomingChatInProgress: false });
+      await updateConversation(this);
+      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
   }
@@ -124,6 +139,12 @@ class App extends Component {
 
   componentDidUpdate() {
     scrollToBottom(this);
+  }
+
+  setStateAsync = function (newState) {
+    return new Promise((resolve) => {
+      this.setState(newState, resolve);
+    });
   }
 
   render() {
@@ -141,10 +162,15 @@ class App extends Component {
       agentProfileImage,
       agentProfileUserId,
       selectedListingAreaId,
+      selectedAreaId,
       isUserListingSelectDisabled,
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
+      conversationsList,
+      currentConversation,
+      selectedListingMlsID,
+      selectedListingMlsNumber
     } = this.state;
 
     const swapVibeSection = (
@@ -200,14 +226,6 @@ class App extends Component {
       }, 3500);
     };
 
-    const contextOptions = [
-      { value: 0, label: 'Listing Focused' },
-      { value: 1, label: 'Area Focused' },
-      { value: 2, label: 'RE Coaching' },
-      { value: 3, label: 'Follow Up' },
-      { value: 4, label: 'ChatGPT'}
-    ];
-
     const EnhanceButtons = (
       <button
         onClick={(e) => handleEnhancePromptClick(this, e)}
@@ -216,14 +234,6 @@ class App extends Component {
         Enhance Prompt
       </button>
     );
-
-    const contextItems = contextOptions.map((option, index) => {
-      return (
-        <option key={index} value={option.value}>
-          {option.label}
-        </option>
-      );
-    });
 
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
@@ -297,6 +307,22 @@ class App extends Component {
       );
     });
 
+    const contextOptions = [
+      { value: 0, label: 'Listing Focused' },
+      { value: 1, label: 'Area Focused' },
+      { value: 2, label: 'RE Coaching' },
+      { value: 3, label: 'Follow Up' },
+      { value: 4, label: 'ChatGPT' }
+    ];
+
+    const contextItems = contextOptions.map((option, index) => {
+      return (
+        <option key={index} value={option.value}>
+          {option.label}
+        </option>
+      );
+    });
+
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
@@ -331,6 +357,25 @@ class App extends Component {
         </div>
       );
     });
+
+    const startMessage = () => {
+      return (
+        <div>
+          <p>Welcome to Paisley, your ultimate real estate productivity booster and colleague!</p>
+          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen. Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
+          <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+          <ul>
+            <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
+            <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
+            <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
+            <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
+            <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
+          </ul>
+          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley. Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
+          <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
+        </div>
+      )
+    };
 
 
     return (
@@ -370,7 +415,7 @@ class App extends Component {
               </form>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
+                  <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
                     <option value="">-- Select Listing --</option>
                     {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
@@ -392,10 +437,10 @@ class App extends Component {
               )}
               {context_id === 1 && agentProfileUserId && areas.length > 0 && (
                 <div className='sidebar-section areaSelectBox'>
-                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
+                  <select value={selectedAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
                     <option value="">-- Select Area --</option>
-                    {areas.map((area, index) => (
-                      <option key={index} value={area.areaId}>
+                    {areas.map((area) => (
+                      <option key={area.areaId} value={area.areaId}>
                         {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
                       </option>
                     ))}
@@ -422,14 +467,24 @@ class App extends Component {
           </div>
         </div>
         <div className='main-content'>
+          <div id="conversation-select">
+            <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
+              <option value="">-- Select Conversation --</option>
+              {conversationsList.length > 0 && conversationsList.map((conversation, index) => (
+                <option key={index} value={conversation.id}>
+                  {conversation.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
                 if (context_id === 0) {
-                  return "Hi, I'm Paisley! Please select a listing from the dropdown to the left";
+                  return startMessage();
                 } else if (context_id === 1) {
                   return areas.length > 0
-                    ? "Hi, I'm Paisley! Please select an area from the dropdown to the left"
+                    ? startMessage()
                     : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
                 } else if (context_id === 2) {
                   return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";

@@ -26,7 +26,9 @@ import {
   handleTargetAudienceChange,
   handleToneChange,
   handleWritingStyleChange,
-  formatKey
+  formatKey,
+  getConversations,
+  userSelectedConversation
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -65,6 +67,7 @@ class App extends Component {
       incomingChatInProgress: false,
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
+      conversations: [],
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -90,9 +93,10 @@ class App extends Component {
       this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(response => response.json())
-          .then(() => {
+          .then(async () => {
             if (this.state.agentProfileUserId) {
-              getAgentProfile(this);
+              await getAgentProfile(this);
+              this.setState({conversations: await getConversations(this)});
             }
           })
           .catch(error => console.error(error));
@@ -422,6 +426,16 @@ class App extends Component {
                   </select>
                 </div>
               )}
+            </div>
+            <div className='sidebar-section'>
+                <select ref={this.conversationSelectRef} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
+                  <option value="">-- Select Conversation --</option>
+                  {conversations.map((conversation, index) => (
+                    <option key={index} value={conversation.id}>
+                      {conversation.name}
+                    </option>
+                  ))}
+                </select>
             </div>
           </div>
           <div className="sidebar-section quick-actions">

@@ -159,6 +159,12 @@ export async function userSelectedListingArea(context, event) {
     context.generateAreaKit();
 }
 
+export async function userSelectedConversation(context, event) {
+    event.preventDefault();
+    const conversationId = event.target.value;
+    await fetchConversation(context, conversationId);
+}
+
 async function getEnhancedPrompt(text) {
     try {
         const stopSequence = 'END_OF_IMPROVED_TEXT';
@@ -235,17 +241,18 @@ export function formatKey(str) {
         .join(' ');
 };  
 
-export async function getState(agentProfileUserId) {
+export async function getConversations(agentProfileUserId) {
+    const workerURL = context.workerUrl;
     try {
       const response = await fetch(workerURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "getState", agentProfileUserId }),
+        body: JSON.stringify({ method: "getStates", agentProfileUserId }),
       });
   
       if (response.ok) {
-        const state = await response.json();
-        return state;
+        const states = await response.json();
+        return states;
       } else {
         throw new Error("Failed to get state from Cloudflare Worker");
       }
@@ -254,13 +261,14 @@ export async function getState(agentProfileUserId) {
     }
   };
   
- export async function storeState(context, agentProfileUserId) {
+ export async function storeConversations(context, agentProfileUserId) {
+    const workerURL = context.workerUrl;
     const state = context.state;
     try {
       const response = await fetch(workerURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "storeState", agentProfileUserId, state }),
+        body: JSON.stringify({ method: "storeStates", agentProfileUserId, state }),
       });
   
       if (!response.ok) {
@@ -283,5 +291,18 @@ export async function createConversation(context, conversationName) {
 
     const updatedStates = [...existingStates, newConversation];
 
-    await storeState(context, agentProfileUserId, updatedStates)
+    await storeConversations(context, agentProfileUserId, updatedStates)
+}
+
+export async function fetchConversation(context, conversationId) {
+    const { agentProfileUserId } = context.state;
+
+    const conversationStates = await getConversations(agentProfileUserId);
+
+    const state = conversationStates.map(state => {
+        const conversation = conversationStates.find(s => s.id === conversationId);
+        return conversation ? conversation : state;
+    });
+
+    context.setState(state.state);
 }

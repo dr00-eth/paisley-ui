@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile, getAreaUserListings } from "./utils";
 
 export function updateDisplayMessagesWithFavorites(context) {
@@ -233,3 +234,54 @@ export function formatKey(str) {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 };  
+
+export async function getState(agentProfileUserId) {
+    try {
+      const response = await fetch(workerURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "getState", agentProfileUserId }),
+      });
+  
+      if (response.ok) {
+        const state = await response.json();
+        return state;
+      } else {
+        throw new Error("Failed to get state from Cloudflare Worker");
+      }
+    } catch (error) {
+      console.error("Error getting state:", error);
+    }
+  };
+  
+ export async function storeState(context, agentProfileUserId) {
+    const state = context.state;
+    try {
+      const response = await fetch(workerURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "storeState", agentProfileUserId, state }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to store state in Cloudflare Worker");
+      }
+    } catch (error) {
+      console.error("Error storing state:", error);
+    }
+  };
+  
+export async function createConversation(context, conversationName) {
+    const state = context.state;
+    const { agentProfileUserId } = context.state;
+
+    const newConversation = {
+        id: uuidv4(),
+        name: conversationName,
+        state: state
+    }
+
+    const updatedStates = [...existingStates, newConversation];
+
+    await storeState(context, agentProfileUserId, updatedStates)
+}

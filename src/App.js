@@ -69,6 +69,7 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
+    this.workerUrl = 'https://paisley-proto.thegenie.ai.workers.dev'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
@@ -249,6 +250,25 @@ class App extends Component {
       );
     });
 
+    const startMessage = () => {
+      return (
+        <div>
+          <p>Welcome to Paisley, your ultimate real estate productivity booster and colleague!</p>
+          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen. Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
+          <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+          <ul>
+            <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
+            <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
+            <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
+            <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
+            <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
+          </ul>
+          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley. Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
+          <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
+        </div>
+        )
+        };
+
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
@@ -426,10 +446,10 @@ class App extends Component {
             {(() => {
               if (messages.length === 0) {
                 if (context_id === 0) {
-                  return "Hi, I'm Paisley! Please select a listing from the dropdown to the left";
+                  return startMessage();
                 } else if (context_id === 1) {
                   return areas.length > 0
-                    ? "Hi, I'm Paisley! Please select an area from the dropdown to the left"
+                    ? startMessage()
                     : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
                 } else if (context_id === 2) {
                   return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";

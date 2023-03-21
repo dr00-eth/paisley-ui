@@ -68,11 +68,13 @@ class App extends Component {
       messagesTokenCount: 0,
       isSwapVibeCollapsed: true,
       conversations: [],
+      currentConversation: '',
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
-    this.workerUrl = 'https://paisley-proto.thegenie.ai.workers.dev'
+    this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
+    //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
@@ -96,7 +98,8 @@ class App extends Component {
           .then(async () => {
             if (this.state.agentProfileUserId) {
               await getAgentProfile(this);
-              this.setState({conversations: await getConversations(this)});
+              const [conversationsLite, _] = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              this.setState({ conversations: conversationsLite});
             }
           })
           .catch(error => console.error(error));
@@ -150,6 +153,7 @@ class App extends Component {
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
+      conversations
     } = this.state;
 
     const swapVibeSection = (
@@ -205,14 +209,6 @@ class App extends Component {
       }, 3500);
     };
 
-    const contextOptions = [
-      { value: 0, label: 'Listing Focused' },
-      { value: 1, label: 'Area Focused' },
-      { value: 2, label: 'RE Coaching' },
-      { value: 3, label: 'Follow Up' },
-      { value: 4, label: 'ChatGPT'}
-    ];
-
     const EnhanceButtons = (
       <button
         onClick={(e) => handleEnhancePromptClick(this, e)}
@@ -221,14 +217,6 @@ class App extends Component {
         Enhance Prompt
       </button>
     );
-
-    const contextItems = contextOptions.map((option, index) => {
-      return (
-        <option key={index} value={option.value}>
-          {option.label}
-        </option>
-      );
-    });
 
     const listingButtons = listingMenuItems.map((option, index) => {
       return (
@@ -253,25 +241,6 @@ class App extends Component {
         </button>
       );
     });
-
-    const startMessage = () => {
-      return (
-        <div>
-          <p>Welcome to Paisley, your ultimate real estate productivity booster and colleague!</p>
-          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen. Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
-          <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
-          <ul>
-            <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
-            <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
-            <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
-            <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
-            <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
-          </ul>
-          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley. Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
-          <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
-        </div>
-        )
-        };
 
     const areaButtons = areaMenuItems.map((option, index) => {
       return (
@@ -321,6 +290,22 @@ class App extends Component {
       );
     });
 
+    const contextOptions = [
+      { value: 0, label: 'Listing Focused' },
+      { value: 1, label: 'Area Focused' },
+      { value: 2, label: 'RE Coaching' },
+      { value: 3, label: 'Follow Up' },
+      { value: 4, label: 'ChatGPT' }
+    ];
+
+    const contextItems = contextOptions.map((option, index) => {
+      return (
+        <option key={index} value={option.value}>
+          {option.label}
+        </option>
+      );
+    });
+
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
@@ -355,6 +340,25 @@ class App extends Component {
         </div>
       );
     });
+
+    const startMessage = () => {
+      return (
+        <div>
+          <p>Welcome to Paisley, your ultimate real estate productivity booster and colleague!</p>
+          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen. Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
+          <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+          <ul>
+            <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
+            <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
+            <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
+            <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
+            <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
+          </ul>
+          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley. Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
+          <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
+        </div>
+      )
+    };
 
 
     return (
@@ -427,16 +431,6 @@ class App extends Component {
                 </div>
               )}
             </div>
-            <div className='sidebar-section'>
-                <select ref={this.conversationSelectRef} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
-                  <option value="">-- Select Conversation --</option>
-                  {conversations.map((conversation, index) => (
-                    <option key={index} value={conversation.id}>
-                      {conversation.name}
-                    </option>
-                  ))}
-                </select>
-            </div>
           </div>
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
@@ -456,6 +450,16 @@ class App extends Component {
           </div>
         </div>
         <div className='main-content'>
+          <div id="convesation-select">
+            <select ref={this.conversationSelectRef} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
+              <option value="">-- Select Conversation --</option>
+              {conversations.length > 0 && conversations.map((conversation, index) => (
+                <option key={index} value={conversation.id}>
+                  {conversation.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {

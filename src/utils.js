@@ -1,4 +1,4 @@
-import { waitForIncomingChatToFinish, showLoading, hideLoading } from './helpers';
+import { waitForIncomingChatToFinish, showLoading, hideLoading, createConversation } from './helpers';
 
 export function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
@@ -221,8 +221,11 @@ function adjustVibe(context, userMessage) {
 
 export async function sendMessage(context, event) {
     event.preventDefault();
-    const { displayMessages, connection_id, context_id, gptModel, userMessage } = context.state;
+    const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
     let message = '';
+    if (!currentConversation) {
+        await createConversation(context, userMessage.messageInput.slice(0,15))
+    }
     if (userMessage) {
         if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience) {
             message = adjustVibe(context, userMessage);

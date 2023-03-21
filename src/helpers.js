@@ -241,34 +241,38 @@ export function formatKey(str) {
         .join(' ');
 };  
 
-export async function getConversations(agentProfileUserId) {
+export async function getConversations(context, agentProfileUserId) {
     const workerURL = context.workerUrl;
     try {
       const response = await fetch(workerURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "getStates", agentProfileUserId }),
+        body: JSON.stringify({ method: "getStates", agentProfileUserId: agentProfileUserId }),
       });
   
       if (response.ok) {
         const states = await response.json();
-        return states;
+        const modifiedStates = states.map(({ id, name }) => ({ id, name }));
+        return [modifiedStates, states];
+      } else if (response.status === 404) {
+        // Return an empty array if the worker responds with a 404 error
+        return [[], []];
       } else {
         throw new Error("Failed to get state from Cloudflare Worker");
       }
     } catch (error) {
-      console.error("Error getting state:", error);
+      console.error("No states:", error);
+      return [[], []];
     }
-  };
+  };  
   
- export async function storeConversations(context, agentProfileUserId) {
+ export async function storeConversations(context, agentProfileUserId, conversations) {
     const workerURL = context.workerUrl;
-    const state = context.state;
     try {
       const response = await fetch(workerURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "storeStates", agentProfileUserId, state }),
+        body: JSON.stringify({ method: "storeStates", agentProfileUserId: agentProfileUserId, states: conversations }),
       });
   
       if (!response.ok) {
@@ -281,7 +285,7 @@ export async function getConversations(agentProfileUserId) {
   
 export async function createConversation(context, conversationName) {
     const state = context.state;
-    const { agentProfileUserId } = context.state;
+    const { agentProfileUserId, conversations } = context.state;
 
     const newConversation = {
         id: uuidv4(),
@@ -289,20 +293,22 @@ export async function createConversation(context, conversationName) {
         state: state
     }
 
-    const updatedStates = [...existingStates, newConversation];
+    const updatedStates = [...conversations, newConversation];
 
     await storeConversations(context, agentProfileUserId, updatedStates)
+
+    context.setState({currentConversation: newConversation.id});
 }
 
 export async function fetchConversation(context, conversationId) {
     const { agentProfileUserId } = context.state;
-
-    const conversationStates = await getConversations(agentProfileUserId);
-
-    const state = conversationStates.map(state => {
-        const conversation = conversationStates.find(s => s.id === conversationId);
-        return conversation ? conversation : state;
-    });
-
-    context.setState(state.state);
-}
+  
+    const [_, conversationStates] = await getConversations(context, agentProfileUserId); // eslint-disable-line no-unused-vars
+  
+    const conversation = conversationStates.find((conversationState) => conversationState.id === conversationId);
+    if (conversation) {
+      console.log("in conversation",conversation);
+      context.setState(conversation.state);
+    }
+  }
+  

@@ -223,7 +223,7 @@ function adjustVibe(context, userMessage) {
 
 export async function sendMessage(context, event) {
     event.preventDefault();
-    const { displayMessages, connection_id, context_id, gptModel, userMessage } = context.state;
+    const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
 
     if (userMessage) {
         if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience) {
@@ -239,8 +239,12 @@ export async function sendMessage(context, event) {
             writingStyle: userMessage.writingStyle,
             targetAudience: userMessage.targetAudience
         }];
-
-        await createConversation(context, userMessage.messageInput.slice(0,30));
+        if (currentConversation !== '') {
+            await updateConversation(context);
+        } else {
+            await createConversation(context, userMessage.messageInput.slice(0,30));
+        }
+        
 
         const requestBody = {
             user_id: connection_id,

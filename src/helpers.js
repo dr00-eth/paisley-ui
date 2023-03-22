@@ -37,14 +37,14 @@ export async function waitForIncomingChatToFinish(context) {
     }
 }
 
-export function assignMessageIdToDisplayMessage(context, content, messageId) {
+export async function assignMessageIdToDisplayMessage(context, content, messageId) {
     const updatedDisplayMessages = context.state.displayMessages.map(msg => {
         if (msg.content === content) {
             return { ...msg, id: messageId };
         }
         return msg;
     });
-    context.setState({ displayMessages: updatedDisplayMessages });
+    context.setStateAsync({ displayMessages: updatedDisplayMessages });
 }
 
 export function handleToggleFavorite(context, id) {

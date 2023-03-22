@@ -136,7 +136,7 @@ class App extends Component {
     //MESSAGE_COMPLETE
     this.socket.on('message_complete', async (data) => {
       const messageId = this.messageManager.addMessage("assistant", data.message);
-      assignMessageIdToDisplayMessage(this, data.message, messageId);
+      await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
       await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
       this.textareaRef.current.focus();
@@ -439,9 +439,9 @@ class App extends Component {
                   value={userMessage.messageInput}
                   ref={this.textareaRef}
                   className="chat-input-textarea"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                    this.setState({ userMessage: newUserMessage })
+                    this.setStateAsync({ userMessage: newUserMessage })
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={(e) => {

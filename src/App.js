@@ -394,7 +394,7 @@ class App extends Component {
         <div className="sidebar">
           <div className='sidebar-top'>
             <div className="sidebar-section">
-              <h1 className="sidebar-title">TheGenie - Paisley</h1>
+              <img className='logo' alt='logo of thegenie real estate marketing system' src='/static/img/thegenie-logo-white.png' />
               <form
                 className='user-form'
                 onSubmit={(e) => {

@@ -64,6 +64,11 @@ body {
   margin-bottom: 1rem;
 }
 
+img.logo {
+  width: 250px;
+  margin-bottom: 2rem;
+}
+
 .no-actions {
   color: white;
 }

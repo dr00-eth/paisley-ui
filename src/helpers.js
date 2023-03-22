@@ -311,7 +311,7 @@ export const startMessage = () => {
     return (
         <div>
             <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
-            <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen.</p>
+            <p>To get started, simply type in your question or prompt in the chat bar on the bottom of your screen.</p>
             <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
             <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
             <ul>
@@ -341,8 +341,7 @@ function getSimplifiedState(context) {
         selectedAreaName: context.state.selectedAreaName,
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
-        listingAreas: context.state.listingAreas,
-        deletedMsgs: context.state.deletedMsgs
+        listingAreas: context.state.listingAreas
     };
 }
 
@@ -359,12 +358,15 @@ export async function getConversations(context, agentProfileUserId) {
             const states = await response.json();
             const modifiedStates = states.map(({ id, name }) => ({ id, name }));
             return { modifiedStates, states };
+        } else if (response.status === 404) {
+            // Return an empty array if the worker responds with a 404 error
+            return { modifiedStates: [], states: [] };;
         } else {
             throw new Error("Failed to get state from Cloudflare Worker");
         }
     } catch (error) {
         console.error("No states:", error);
-        return { modifiedStates: [], states: [] };
+        return { modifiedStates: [], states: [] };;
     }
 };
 
@@ -466,8 +468,7 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaName: state.selectedAreaName,
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
-            listingAreas: state.listingAreas,
-            deletedMsgs: context.state.deletedMsgs
+            listingAreas: state.listingAreas
         });
     }
 }

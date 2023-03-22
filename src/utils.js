@@ -1,4 +1,4 @@
-import { waitForIncomingChatToFinish, updateConversation } from './helpers';
+import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
 
 export async function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
@@ -240,6 +240,8 @@ export async function sendMessage(context, event) {
             targetAudience: userMessage.targetAudience
         }];
 
+        await createConversation(context, userMessage.messageInput.slice(0,30));
+
         const requestBody = {
             user_id: connection_id,
             context_id: context_id
@@ -289,7 +291,6 @@ export async function sendMessage(context, event) {
             })
             .catch(error => console.error(error));
 
-        await updateConversation(context);
     }
 }
 

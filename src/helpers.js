@@ -111,7 +111,7 @@ export async function changeContext(context, event) {
             for (const message of data) {
                 context.messageManager.addMessage(message.role, message.content, true);
             }
-            if (newContextId === 2 || newContextId === 3) {
+            if (newContextId !== 4) {
                 showLoading(context);
                 await getAgentProfile(context);
                 hideLoading(context);

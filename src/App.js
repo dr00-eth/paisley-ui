@@ -51,6 +51,7 @@ class App extends Component {
       displayMessages: [],
       messageInput: '',
       userMessage: this.messageManager.userMessage,
+      deletedMessages: this.messageManager.deletedMsgs,
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',

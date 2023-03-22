@@ -279,9 +279,10 @@ export async function sendMessage(context, event) {
         await fetch(`${context.apiServerUrl}/api/gettokencount`, tokenChkReq)
             .then(async response => await response.json())
             .then(async (data) => {
-                if (data.tokencounts > 3000) {
+                if (data.tokencounts > 3250) {
                     console.log("pruning tokens");
-                    context.messageManager.checkThresholdAndMove(.10);
+                    context.messageManager.checkThresholdAndMove(1);
+                    updateConversation(context);
                     await context.setStateAsync({ messages: context.messageManager.getMessages(), messagesTokenCount: data.tokencounts });
                 }
                 console.log(data.tokencounts);

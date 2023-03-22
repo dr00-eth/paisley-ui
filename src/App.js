@@ -433,7 +433,12 @@ class App extends Component {
             >
               {contextItems}
             </select>
-            <form onSubmit={async (e) => await sendMessage(this, e)}>
+            <form onSubmit={async (e) => {
+                const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                await this.setStateAsync({ userMessage: newUserMessage });
+                await sendMessage(this, e)
+                }
+              }>
               <div className='chat-area'>
                 <textarea
                   value={userMessage.messageInput}
@@ -441,12 +446,14 @@ class App extends Component {
                   className="chat-input-textarea"
                   onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                    this.setStateAsync({ userMessage: newUserMessage })
+                    await this.setStateAsync({ userMessage: newUserMessage });
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
+                      const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                      await this.setStateAsync({ userMessage: newUserMessage });
                       await sendMessage(this, e);
                     }
                   }}

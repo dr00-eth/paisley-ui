@@ -521,46 +521,46 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
         await addMessage(context, "user", areaStatPrompt);
         await context.setStateAsync({ selectedListingAreaId: preferredAreaId });
     }
-    else {
-        const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
-        const areaStatsptions = {
-            method: 'POST',
-            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ zipCode: listingInfo.zip, userId: context.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
-        }
-        const statsResults = await fetch(areaStatsApi, areaStatsptions);
-        const { statistics } = await statsResults.json();
+    // else {
+    //     const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
+    //     const areaStatsptions = {
+    //         method: 'POST',
+    //         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ zipCode: listingInfo.zip, userId: context.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
+    //     }
+    //     const statsResults = await fetch(areaStatsApi, areaStatsptions);
+    //     const { statistics } = await statsResults.json();
 
-        const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-        const areaNameOptions = {
-            method: 'POST',
-            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: context.state.agentProfileUserId, consumer: 0 })
-        }
-        const nameResults = await fetch(areaNameApi, areaNameOptions);
-        const { areaName, areaId } = await nameResults.json();
+    //     const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
+    //     const areaNameOptions = {
+    //         method: 'POST',
+    //         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: context.state.agentProfileUserId, consumer: 0 })
+    //     }
+    //     const nameResults = await fetch(areaNameApi, areaNameOptions);
+    //     const { areaName, areaId } = await nameResults.json();
 
-        const areaStatsPrompts = [];
-        areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
+    //     const areaStatsPrompts = [];
+    //     areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
 
-        for (const lookback of statistics) {
-            areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+    //     for (const lookback of statistics) {
+    //         areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
 
-            const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
+    //         const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
 
-            if (propTypeStats.length > 0) {
-                const propTypeDescription = propTypeStats[0].propertyTypeDescription;
-                const statistics = propTypeStats[0].statistics;
-                areaStatsPrompts.push(`For ${propTypeDescription} homes like this, avg. sale price: $${statistics.averageSalePrice.toLocaleString()}, avg. days on market: ${statistics.averageDaysOnMarket}, avg. price per sq. ft.: $${statistics.averagePricePerSqFt.toLocaleString()}."
-            3.) "Property in ${areaName} zip code.`);
-            }
-        }
-        const areaStatPrompt = areaStatsPrompts.join('\n');
+    //         if (propTypeStats.length > 0) {
+    //             const propTypeDescription = propTypeStats[0].propertyTypeDescription;
+    //             const statistics = propTypeStats[0].statistics;
+    //             areaStatsPrompts.push(`For ${propTypeDescription} homes like this, avg. sale price: $${statistics.averageSalePrice.toLocaleString()}, avg. days on market: ${statistics.averageDaysOnMarket}, avg. price per sq. ft.: $${statistics.averagePricePerSqFt.toLocaleString()}."
+    //         3.) "Property in ${areaName} zip code.`);
+    //         }
+    //     }
+    //     const areaStatPrompt = areaStatsPrompts.join('\n');
 
-        await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
+    //     await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
 
-        await addMessage(context, "user", areaStatPrompt);
-        await context.setStateAsync({ selectedListingAreaId: areaId });
-    }
+    //     await addMessage(context, "user", areaStatPrompt);
+    //     await context.setStateAsync({ selectedListingAreaId: areaId });
+    // }
     return listingAddress;
 }

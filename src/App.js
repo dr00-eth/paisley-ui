@@ -3,25 +3,65 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
-import { LISTINGMENUITEMS as listingMenuItems, AREAMENUITEMS as areaMenuItems, FOLLOWUPMENUITEMS as followupMenuItems } from './constants'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
+
+import {contextItems} from './contexts';
+import {
+  LISTINGMENUITEMS as listingMenuItems,
+  AREAMENUITEMS as areaMenuItems,
+  FOLLOWUPMENUITEMS as followupMenuItems,
+} from './constants';
+import SmartMessageManager from './SmartMessageManager';
+import {
+  scrollToBottom,
+  autoGrowTextarea,
+  assignMessageIdToDisplayMessage,
+  handleToggleFavorite,
+  resetChat,
+  changeContext,
+  handleMessage,
+  userSelectedListing,
+  userSelectedArea,
+  userSelectedListingArea,
+  handleEnhancePromptClick,
+  toggleSwapVibe,
+  handleTargetAudienceChange,
+  handleToneChange,
+  handleWritingStyleChange,
+  formatKey,
+  getConversations,
+  userSelectedConversation,
+  updateConversation,
+  showLoading,
+  hideLoading,
+  createButtons,
+  startMessage
+} from './helpers';
+import { sendMessage, getAgentProfile } from './utils';
 
 class App extends Component {
   constructor(props) {
     super(props);
+    this.messageManager = new SmartMessageManager();
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
-      messages: [],
+      messages: this.messageManager.getMessages(),
       displayMessages: [],
       messageInput: '',
+      userMessage: this.messageManager.userMessage,
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
+      privateMode: searchParams.get('privateMode') ?? false,
       gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
       isLoading: false,
       showCopyNotification: {},
+      selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
@@ -29,37 +69,31 @@ class App extends Component {
       agentProfileImage: '',
       listings: [],
       areas: [],
+      areaUserListings: [],
       listingAreas: [],
       listingKitUrl: '',
       areaKitUrl: '',
       selectedAreaName: '',
       selectedListingAddress: '',
       incomingChatInProgress: false,
+      messagesTokenCount: 0,
+      isSwapVibeCollapsed: true,
+      conversations: [],
+      conversationsList: [],
+      currentConversation: '',
     };
-    this.sendMessage = this.sendMessage.bind(this);
-    this.handleMessage = this.handleMessage.bind(this);
-    this.changeContext = this.changeContext.bind(this);
-    this.getAgentProfile = this.getAgentProfile.bind(this);
-    this.getPropertyProfile = this.getPropertyProfile.bind(this);
-    this.getListingAreas = this.getListingAreas.bind(this);
-    this.resetChat = this.resetChat.bind(this);
-    this.userSelectedListing = this.userSelectedListing.bind(this);
-    this.userSelectedArea = this.userSelectedArea.bind(this);
-    this.userSelectedListingArea = this.userSelectedListingArea.bind(this);
-    this.generateListingKit = this.generateListingKit.bind(this);
-    this.generateAreaKit = this.generateAreaKit.bind(this);
-    this.waitForIncomingChatToFinish = this.waitForIncomingChatToFinish.bind(this);
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
-    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app';
+    this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
+    //this.workerUrl = 'http://127.0.0.1:8787/fetch'
+    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
     } else {
       this.webSocketUrl = 'ws' + this.apiServerUrl.slice(4);
     }
-    
   }
 
   componentDidMount() {
@@ -67,30 +101,44 @@ class App extends Component {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
     });
-    this.socket.on('message', this.handleMessage);
-    this.socket.on('emit_event', (data) => {
-      // call the callback function with the data provided by the server
-      this.socket.emit('callback_event', data.callback_data);
-      this.setState({ incomingChatInProgress: true });
-    });
-    this.socket.on('message_complete', () => {
-      this.setState({ incomingChatInProgress: false });
-      this.textareaRef.current.focus();
-    });
+    //CONNECT
     this.socket.on('connect', () => {
       console.log("Socket Connected:", this.socket.id);
       this.setState({ connection_id: this.socket.id }, () => {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
-          .then(response => response.json())
-          .then(data => {
-            const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-            this.setState({ messages: messages });
+          .then(async response => await response.json())
+          .then(async (data) => {
+            for (const message of data) {
+              this.messageManager.addMessage(message.role, message.content, true);
+            }
             if (this.state.agentProfileUserId) {
-              this.getAgentProfile();
+              showLoading(this);
+              await getAgentProfile(this);
+              hideLoading(this);
+              const { modifiedStates, states } = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
             }
           })
           .catch(error => console.error(error));
       });
+    });
+    //MESSAGE
+    this.socket.on('message', (data) => handleMessage(this, data));
+    //EMIT_EVENT
+    this.socket.on('emit_msgs_event', (data) => {
+      const callbackData = { ...data.callback_data };
+      callbackData.messages = this.messageManager.getMessages();
+      console.log(this.messageManager.getMessages());
+      this.socket.emit('callback_msgs_event', callbackData);
+      this.setState({ incomingChatInProgress: true });
+    });
+    //MESSAGE_COMPLETE
+    this.socket.on('message_complete', async (data) => {
+      const messageId = this.messageManager.addMessage("assistant", data.message);
+      assignMessageIdToDisplayMessage(this, data.message, messageId);
+      await updateConversation(this);
+      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
+      this.textareaRef.current.focus();
     });
   }
 
@@ -100,564 +148,20 @@ class App extends Component {
   }
 
   componentDidUpdate() {
-    this.scrollToBottom();
+    scrollToBottom(this);
   }
 
-  showLoading() {
-    this.setState({ isLoading: true });
-  }
-
-  hideLoading() {
-    this.setState({ isLoading: false });
-  }
-
-  scrollToBottom() {
-    if (this.chatDisplayRef.current) {
-      this.chatDisplayRef.current.scrollTop = this.chatDisplayRef.current.scrollHeight;
-    }
-  }
-
-  autoGrowTextarea = () => {
-    const textarea = this.textareaRef.current;
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
-  }
-
-  async waitForIncomingChatToFinish() {
-    while (this.state.incomingChatInProgress) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
-  changeContext(event) {
-    const newContextId = parseInt(event.target.value);
-    this.setState({ context_id: newContextId, messages: [], displayMessages: [] });
-    fetch(`${this.apiServerUrl}/api/getmessages/${newContextId}/${this.state.connection_id}`)
-      .then(response => response.json())
-      .then(data => {
-        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages });
-        if (newContextId === 2 || newContextId === 3) {
-          this.getAgentProfile();
-        }
-      })
-      .catch(error => console.error(error));
-  }
-
-  handleMessage(data) {
-    const messages = this.state.messages.slice();
-    const displayMessages = this.state.displayMessages.slice();
-    const latestMsg = messages[messages.length - 1];
-    const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-    if (latestMsg && latestMsg.role === "assistant" && latestDisplayMsg && latestDisplayMsg.role === "assistant") {
-      // Append incoming message to the latest assistant message
-      latestMsg.content += data.message;
-      latestDisplayMsg.content += data.message;
-    } else {
-      // Add a new assistant message with the incoming message
-      messages.push({ role: "assistant", content: data.message });
-      displayMessages.push({ role: "assistant", content: data.message })
-    }
-    this.setState({ messages: messages, displayMessages: displayMessages });
-  }
-
-  sendMessage(event) {
-    event.preventDefault();
-    if (this.state.messageInput) {
-      const messages = [...this.state.messages];
-      const displayMessages = [...this.state.displayMessages];
-      messages.push({
-        role: 'user',
-        content: this.state.messageInput
-      });
-      displayMessages.push({
-        role: 'user',
-        content: this.state.messageInput
-      });
-
-      const requestBody = {
-        message: this.state.messageInput,
-        user_id: this.state.connection_id, 
-        context_id: this.state.context_id
-      }
-
-      if (this.state.gptModel !== null) {
-        requestBody.model = this.state.gptModel;
-      }
-
-      const requestOptions = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      };
-      fetch(`${this.apiServerUrl}/api/messages`, requestOptions)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to send message');
-          }
-        })
-        .catch(error => console.error(error));
-      this.setState({ messages, displayMessages, messageInput: '' });
-    }
-  }
-
-  async addMessage(role, message) {
-    const streambotApi = `${this.apiServerUrl}/api/addmessages`;
-    const addMsgRequestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: role, message: message, user_id: this.state.connection_id, context_id: this.state.context_id })
-    }
-    try {
-      await fetch(streambotApi, addMsgRequestOptions);
-    } catch (error) {
-      console.error('Error in addMessage:', error);
-    }
-  }
-
-  resetChat(event) {
-    event.preventDefault();
-    this.showLoading();
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: this.state.connection_id, context_id: this.state.context_id })
-    };
-    fetch(`${this.apiServerUrl}/api/newchat`, requestOptions)
-      .then(response => {
-        if (!response.ok) {
-          this.hideLoading();
-          throw new Error('Failed to reset chat');
-        }
-        return fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`);
-      })
-      .then(response => response.json())
-      .then(data => {
-        const messages = data.map(msg => ({ role: msg.role, content: msg.content }));
-        this.setState({ messages: messages, displayMessages: [], isUserListingSelectDisabled: false, selectedListingMlsID: '', selectedListingMlsNumber: '' });
-        this.getAgentProfile();
-        this.listingSelectRef.current.value = '';
-        this.areaSelectRef.current.value = '';
-        this.hideLoading();
-      })
-      .catch(error => {
-        this.hideLoading();
-        console.error(error)
-      });
-  }
-
-  getUserListings() {
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: this.state.agentProfileUserId, includeOpenHouses: false }),
-    }
-    fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        // filter properties with listDate > 60 days ago
-        const listings = data.properties.filter(property => {
-          const listDate = new Date(property.listDate);
-          const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
-          return daysAgo > 60;
-        });
-
-        // sort listings by listDate descending
-        listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
-
-        // update state with fetched listings
-        this.setState({ listings });
-      })
-      .catch(error => {
-        // handle error
-        console.error(error);
-      });
-  }
-
-  generateListingKit() {
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_id: this.state.agentProfileUserId, collection: 'just-listed-kit', mlsNumber: this.state.selectedListingMlsNumber, mlsID: this.state.selectedListingMlsID, saveDB: true, async: false }),
-    }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        const collection = data.result.collection;
-        const kitUrl = collection['collection-page'];
-        const comment = `Here is your personalized listing-focused kit for ${this.state.selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-        setTimeout(async () => {
-          await this.waitForIncomingChatToFinish();
-          const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({ role: "assistant", content: comment, isKit: true });
-          this.setState({ displayMessages, listingKitUrl: kitUrl });
-        }, 30000);
-
-      })
-      .catch(error => {
-        // handle error
-        console.error(error);
-      });
-  }
-
-  generateAreaKit() {
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_id: this.state.agentProfileUserId, areaID: this.state.selectedAreaId, collection: 'market-report-kit', saveDB: true, async: false }),
-    }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        const collection = data.result.collection;
-        const kitUrl = collection['collection-page'];
-        const comment = `Here is your personalized area-focused kit for ${this.state.selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-        setTimeout(async () => {
-          await this.waitForIncomingChatToFinish();
-          const displayMessages = [...this.state.displayMessages];
-          displayMessages.push({ role: "assistant", content: comment });
-          this.setState({ displayMessages, areaKitUrl: kitUrl });
-        }, 30000);
-      })
-      .catch(error => {
-        // handle error
-        console.error(error);
-      });
-  }
-
-  getUserAreas() {
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: this.state.agentProfileUserId, includeTerritories: false, consumer: 0 }),
-    }
-    fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        const areas = data.areas;
-        areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
-        // update state with fetched listings
-        this.setState({ areas });
-      })
-      .catch(error => {
-        // handle error
-        console.error(error);
-      });
-  }
-
-  async getListingAreas() {
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aspNetUserId: this.state.agentProfileUserId, mlsID: this.state.selectedListingMlsID, mlsNumber: this.state.selectedListingMlsNumber, consumer: 0 }),
-    }
-    await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        const listingAreas = data.areas;
-        listingAreas.sort((a, b) => b.areaApnCount - a.areaApnCount);
-        // update state with fetched listing areas
-        this.setState({ listingAreas });
-      })
-      .catch(error => {
-        // handle error
-        console.error(error);
-      });
-  }
-
-  async userSelectedListing(event) {
-    event.preventDefault();
-    const [mlsID, mlsNumber] = event.target.value.split('_');
-    this.setState({
-      selectedListingMlsID: mlsID,
-      selectedListingMlsNumber: mlsNumber
+  setStateAsync = function (newState) {
+    return new Promise((resolve) => {
+      this.setState(newState, resolve);
     });
-    this.showLoading();
-    await this.getPropertyProfile(mlsID, mlsNumber, this.state.selectedListingMlsNumber ? true : false);
-    this.hideLoading();
-    this.generateListingKit();
-  }
-
-  async userSelectedArea(event) {
-    event.preventDefault();
-    const areaId = event.target.value;
-    this.showLoading();
-    await this.getAreaStatisticsPrompt(areaId, this.state.selectedAreaId ? true : false);
-    this.hideLoading();
-    this.setState({
-      selectedAreaId: areaId
-    });
-    this.generateAreaKit();
-  }
-
-  async userSelectedListingArea(event) {
-    event.preventDefault();
-    const selectedListingAreaId = event.target.value;
-    this.showLoading();
-    await this.getAreaStatisticsPrompt(selectedListingAreaId, this.state.selectedListingAreaId ? true : false);
-    this.hideLoading();
-    this.setState({
-      selectedListingAreaId
-    });
-    this.generateAreaKit();
-  }
-
-  async getAreaStatisticsPrompt(areaId, changeArea = false) {
-    const messages = this.state.messages.slice();
-    const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
-    const areaStatsptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
-    }
-    const statsResults = await fetch(areaStatsApi, areaStatsptions);
-    const { statistics } = await statsResults.json();
-
-    const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-    const areaNameOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ areaId: areaId, userId: this.state.agentProfileUserId, consumer: 0 })
-    }
-    const nameResults = await fetch(areaNameApi, areaNameOptions);
-    const { areaName } = await nameResults.json();
-
-    const areaStatsPrompts = [];
-
-    if (!changeArea) {
-      areaStatsPrompts.push(`The following information is for the ${areaName} area.`);
-    } else {
-      areaStatsPrompts.push(`I want to focus on a new area. Let's focus on ${areaName}, please use the following information from now on and disregard the information I provided you earlier.`);
-    }
-
-    for (const lookback of statistics) {
-
-      areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-      for (const propLookback of lookback.propertyTypeStatistics) {
-        const propTypeDescription = propLookback.propertyTypeDescription;
-        const statistics = propLookback.statistics;
-        areaStatsPrompts.push(`For the ${propTypeDescription} type homes, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} in the last ${lookback.lookbackMonths} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
-      }
-    }
-    const areaStatPrompt = areaStatsPrompts.join('\n');
-
-    if (!changeArea) {
-      await this.addMessage("assistant", "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?");
-      messages.push({ role: "assistant", content: "Great! Can you provide me with information about the neighborhood, city or zip code you would like assistance with marketing to?" });
-
-      await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
-    } else {
-      await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
-
-      await this.addMessage("assistant", "Great! I'll use this area's information for my future recommendations.");
-      messages.push({ role: "assistant", content: "Great! I'll use this area's information for my future recommendations." });
-    }
-
-    this.setState({ messages, selectedAreaName: areaName });
-  }
-
-  async getPropertyProfile(mlsId, mlsNumber, changeListing = false) {
-    const messages = this.state.messages.slice();
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mlsId: mlsId, mlsNumber: mlsNumber, userId: this.state.agentProfileUserId, consumer: 0 })
-    }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const { listing, ...rest } = await genieResults.json();
-    const listingInfo = { ...listing };
-    const fullResponse = { listing, ...rest };
-
-    const listingAddress = listingInfo.listingAddress;
-    const virtualTourUrl = listingInfo.virtualTourUrl ?? 'Not provided';
-    const bedrooms = listingInfo.bedrooms;
-    const totalBathrooms = listingInfo.totalBathrooms;
-    const propertyType = listingInfo.propertyType;
-    const propertyTypeId = listingInfo.propertyTypeID;
-    const city = listingInfo.city;
-    const state = listingInfo.state;
-    const zip = listingInfo.zip;
-    const squareFeet = listingInfo.squareFeet ?? 'Not provided';
-    const acres = listingInfo.acres ?? 'Not provided';
-    const garageSpaces = listingInfo.garageSpaces ?? 'Not provided';
-    const yearBuilt = listingInfo.yearBuilt ?? 'Not provided';
-    const listingAgentName = listingInfo.listingAgentName;
-    const listingBrokerName = listingInfo.listingBrokerName;
-    const listingStatus = listingInfo.listingStatus;
-    const remarks = listingInfo.remarks;
-    const preferredAreaId = fullResponse.preferredAreaId;
-    const formatPrice = (price) => {
-      return `$${price.toLocaleString()}`;
-    };
-    const priceStr = listingStatus === "Sold"
-      ? `${formatPrice(listingInfo.salePrice)}`
-      : (listingInfo.highPrice
-        ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
-        : `${formatPrice(listingInfo.lowPrice)}`
-      );
-    const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
-
-    if (!changeListing) {
-      const assistantPrompt = 'Do you have a specific MLS Listing that you\'d like help with today?';
-
-      await this.addMessage("assistant", assistantPrompt);
-      messages.push({ role: "assistant", content: assistantPrompt });
-
-      const listingPrompt = `I have a new ${listingStatus} property located at: ${listingAddress} ${listingStatus === 'Active' ? 'Listed' : (listingStatus === 'Pending' ? 'Pending' : 'Sold')}
-      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
-
-      await this.addMessage("user", listingPrompt);
-      messages.push({ role: "user", content: listingPrompt });
-    } else {
-      const listingPrompt = `Let's shift gears. I have a new ${listingStatus} property that I want help with. It is located at: ${listingAddress}. It ${listingStatus === 'Active' ? 'is Listed' : (listingStatus === 'Pending' ? 'is Pending' : 'has Sold')}
-      for ${priceStr}!\nMLS Number: ${mlsNumber}\nVirtual Tour: ${virtualTourUrl}\nBedrooms: ${bedrooms}\nBathrooms: ${totalBathrooms}\nProperty Type: ${propertyType}\nCity: ${city}\nState: ${state}\nZip:${zip}\nSquare Feet: ${squareFeet}\nAcres: ${acres}\nGarage Spaces: ${garageSpaces}\nYear Built: ${yearBuilt}\nListing Agent: ${listingAgentName} (${listingBrokerName})\nListing Status: ${listingStatus}\nProperty Features: ${featuresStr}\nAdditional Property Details: ${remarks}. Please keep in mind that the "Additional Property Details" do not change as the listing status changes, so do not use any listing status information from that field.`;
-
-      await this.addMessage("user", listingPrompt);
-      messages.push({ role: "user", content: listingPrompt });
-
-      const assistantPrompt = "Great! I'll use this property's listing information from now on and disregard any previous listing and property information you provided.";
-
-      await this.addMessage("assistant", assistantPrompt);
-      messages.push({ role: "assistant", content: assistantPrompt });
-    }
-    await this.getListingAreas();
-    if (preferredAreaId > 0) {
-      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
-      const areaStatsptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
-      }
-      const statsResults = await fetch(areaStatsApi, areaStatsptions);
-      const { statistics } = await statsResults.json();
-
-      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-      const areaNameOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: preferredAreaId, userId: this.state.agentProfileUserId, consumer: 0 })
-      }
-      const nameResults = await fetch(areaNameApi, areaNameOptions);
-      const { areaName } = await nameResults.json();
-
-      const areaStatsPrompts = [];
-      areaStatsPrompts.push(`This property exists in the ${areaName} neighborhood.`);
-
-      for (const lookback of statistics) {
-        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
-
-        if (propTypeStats.length > 0) {
-          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
-          const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
-        }
-      }
-      const areaStatPrompt = areaStatsPrompts.join('\n');
-
-      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
-      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
-
-      await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
-      this.setState({ selectedListingAreaId: preferredAreaId });
-    }
-    else {
-      const areaStatsApi = `https://app.thegenie.ai/api/Data/GetZipCodeStatistics`;
-      const areaStatsptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode: listingInfo.zip, userId: this.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6, 9, 12] })
-      }
-      const statsResults = await fetch(areaStatsApi, areaStatsptions);
-      const { statistics } = await statsResults.json();
-
-      const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
-      const areaNameOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: statistics[0].overallStatistics.id, userId: this.state.agentProfileUserId, consumer: 0 })
-      }
-      const nameResults = await fetch(areaNameApi, areaNameOptions);
-      const { areaName, areaId } = await nameResults.json();
-
-      const areaStatsPrompts = [];
-      areaStatsPrompts.push(`This property exists in the ${areaName} zip code.`);
-
-      for (const lookback of statistics) {
-        areaStatsPrompts.push(`Over the last ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} saw ${lookback.overallStatistics.soldPropertyTypeCount} sales with an average sales price of $${lookback.overallStatistics.averageSalePrice.toLocaleString()} and an average of ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-        const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
-
-        if (propTypeStats.length > 0) {
-          const propTypeDescription = propTypeStats[0].propertyTypeDescription;
-          const statistics = propTypeStats[0].statistics;
-          areaStatsPrompts.push(`For the ${propTypeDescription} type homes like the subject property, the market saw an average sale price of $${statistics.averageSalePrice.toLocaleString()} with an average days on market of ${statistics.averageDaysOnMarket}. The average listing price per square foot was $${statistics.averagePricePerSqFt.toLocaleString()}.`);
-        }
-      }
-      const areaStatPrompt = areaStatsPrompts.join('\n');
-
-      await this.addMessage("assistant", "Great! Do you have any information about the area or neighborhood this property is located in?");
-      messages.push({ role: "assistant", content: "Great! Do you have any information about the area or neighborhood this property is located in?" });
-
-      await this.addMessage("user", areaStatPrompt);
-      messages.push({ role: "user", content: areaStatPrompt });
-      this.setState({ selectedListingAreaId: areaId });
-    }
-
-    this.setState({ messages: messages, selectedListingAddress: listingAddress });
-  }
-
-  async getAgentProfile(event) {
-    if (event) {
-      event.preventDefault();
-    }
-    const userID = event ? event.target[0].value : this.state.agentProfileUserId;
-    this.showLoading();
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
-    const requestOptions = {
-      method: 'POST',
-      headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
-    }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const agentInfo = await genieResults.json();
-    const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
-    const displayName = agentInfo.marketingSettings.profile.displayName ?? name;
-    const email = agentInfo.marketingSettings.profile.email ?? agentInfo.emailAddress;
-    const phone = agentInfo.marketingSettings.profile.phone ?? agentInfo.phoneNumber;
-    const website = agentInfo.marketingSettings.profile.websiteUrl ?? 'Not available';
-    const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber ?? 'Not available';
-    const about = agentInfo.marketingSettings.profile.about ?? 'Not available';
-    const agentProfileImage = agentInfo.marketingSettings.images.find(image => image.marketingImageTypeId === 1)?.url ?? '';
-    const messages = this.state.messages.slice();
-
-    const assistantPrompt = 'In order you assist you in the best possible way, can you provide me with more information about yourself and any relevant details I might need to optimize my content suggestions?';
-
-    await this.addMessage("assistant", assistantPrompt);
-
-    messages.push({ role: "assistant", content: assistantPrompt });
-
-    const agentPrompt = `Sure! My name is ${name}, my prefered display name for marketing purposes is ${displayName} so when constructing signature blocks, list my name and my display name as separate lines if they are different, my email address is ${email}, my phone number is ${phone}, my website is ${website}, my license number is ${licenseNumber}. A little about myself: ${about}`;
-
-    await this.addMessage("user", agentPrompt);
-
-    messages.push({ role: "user", content: agentPrompt });
-    this.setState({ messages: messages, isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
-    this.getUserListings();
-    this.getUserAreas();
-    this.hideLoading();
   }
 
   render() {
     const {
       context_id,
       displayMessages,
-      messageInput,
+      userMessage,
       listings,
       areas,
       listingAreas,
@@ -668,10 +172,46 @@ class App extends Component {
       agentProfileImage,
       agentProfileUserId,
       selectedListingAreaId,
+      selectedAreaId,
       isUserListingSelectDisabled,
       isUserAreaSelectDisabled,
-      showCopyNotification
+      showCopyNotification,
+      isSwapVibeCollapsed,
+      conversationsList,
+      currentConversation,
+      selectedListingMlsID,
+      selectedListingMlsNumber
     } = this.state;
+
+    const swapVibeSection = (
+      <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
+        <div>
+          <select className='Content-dropdown vibe' value={userMessage.writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
+            <option value="">--Select Writing Style--</option>
+            <option value="luxury">Luxury</option>
+            <option value="straightforward">Straightforward</option>
+            <option value="professional">Professional</option>
+          </select>
+        </div>
+        <div>
+          <select className='Content-dropdown vibe' value={userMessage.tone} onChange={(e) => handleToneChange(this, e)} id="tone">
+            <option value="">--Select Tone--</option>
+            <option value="friendly">Friendly</option>
+            <option value="conversational">Conversational</option>
+            <option value="to_the_point">To the Point</option>
+            <option value="emotional">Emotional</option>
+          </select>
+        </div>
+        <div>
+          <select className='Content-dropdown vibe' value={userMessage.targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
+            <option value="">--Select Target Audience--</option>
+            <option value="first_time_home_buyers">First-Time Home Buyers</option>
+            <option value="sellers">Sellers</option>
+            <option value="55plus">55+</option>
+          </select>
+        </div>
+      </div>
+    );
 
     const copyToClipboard = (text, index) => {
       const turndownService = new TurndownService();
@@ -696,76 +236,50 @@ class App extends Component {
       }, 3500);
     };
 
-    const contextOptions = [
-      { value: 0, label: 'Listing Focused' },
-      { value: 1, label: 'Area Focused' },
-      { value: 2, label: 'RE Coaching' },
-      { value: 3, label: 'Follow Up' },
-    ];
+    const EnhanceButtons = (
+      <button
+        onClick={(e) => handleEnhancePromptClick(this, e)}
+        disabled={isLoading || incomingChatInProgress || !userMessage.messageInput}
+      >
+        Enhance Prompt
+      </button>
+    );
 
-    const contextItems = contextOptions.map((option, index) => {
-      return (
-        <option key={index} value={option.value}>
-          {option.label}
-        </option>
-      );
-    });
-
-    const listingButtons = listingMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
-            this.sendMessage(e);
-          });
-        }}>
-          {option.label}
-        </button>
-      );
-    });
-
-    const areaButtons = areaMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
-            this.sendMessage(e);
-          });
-        }}>
-          {option.label}
-        </button>
-      );
-    });
-
-    const followupButtons = followupMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={(e) => {
-          this.setState({ messageInput: e.target.value }, async () => {
-            await this.addMessage("user", option.customPrompt)
-            await this.addMessage("assistant", `OK, when you say "${option.value}" I will produce my output in this format!`)
-            this.sendMessage(e);
-          });
-        }}>
-          {option.label}
-        </button>
-      );
-    });
+    const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
       return (
         <div
           key={index}
-          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""}`}
+          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""} ${msg.isFav ? "favorite" : ""}`}
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
+          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience) && (
+            <div className="user-message-details" style={{ fontStyle: 'italic', fontSize: 'small' }}>
+              {msg.tone && <span>Tone: {formatKey(msg.tone)}</span>}
+              {msg.tone && msg.writingStyle && <span>, </span>}
+              {msg.writingStyle && <span>Writing Style: {formatKey(msg.writingStyle)}</span>}
+              {(msg.tone || msg.writingStyle) && msg.targetAudience && <span>, </span>}
+              {msg.targetAudience && <span>Target Audience: {formatKey(msg.targetAudience)}</span>}
+            </div>
+          )}
+
           {msg.role === "assistant" && (
             <button className='copy-icon' onClick={() => copyToClipboard(content, index)}>
               {showCopyNotification[index] ? 'Copied!' : 'Copy'}
             </button>
+          )}
+          {msg.role === "assistant" && msg.id && (
+            <span
+              className={`heart-icon ${msg.isFav ? "active" : ""}`}
+              onClick={() => handleToggleFavorite(this, msg.id)}
+            >
+              <FontAwesomeIcon icon={msg.isFav ? faSolidHeart : faRegularHeart} />
+            </span>
           )}
         </div>
       );
@@ -774,13 +288,19 @@ class App extends Component {
     return (
       <div className="App">
         <div id="loading-container" style={{ display: isLoading ? 'flex' : 'none' }}>
-          <p>Loading...</p>
+          <p>Learning...</p>
         </div>
         <div className="sidebar">
           <div className='sidebar-top'>
             <div className="sidebar-section">
-              <h1 className="sidebar-title">TheGenie - Paisley</h1>
-              <form className='user-form' onSubmit={this.getAgentProfile}>
+              <img className='logo' alt='logo of thegenie real estate marketing system' src='/static/img/thegenie-logo-white.png' />
+              <form
+                className='user-form'
+                onSubmit={(e) => {
+                  showLoading(this);
+                  getAgentProfile(this, e);
+                  hideLoading(this);
+                }}>
                 {isUserIdInputDisabled === false && (
                   <input
                     type="text"
@@ -808,7 +328,7 @@ class App extends Component {
               </form>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={this.userSelectedListing}>
+                  <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
                     <option value="">-- Select Listing --</option>
                     {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
@@ -817,7 +337,7 @@ class App extends Component {
                     ))}
                   </select>
                   {listingAreas.length > 0 && (
-                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={this.userSelectedListingArea}>
+                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
                       <option value="">-- Select Area --</option>
                       {listingAreas.map((area) => (
                         <option key={area.areaId} value={area.areaId}>
@@ -830,10 +350,10 @@ class App extends Component {
               )}
               {context_id === 1 && agentProfileUserId && areas.length > 0 && (
                 <div className='sidebar-section areaSelectBox'>
-                  <select ref={this.areaSelectRef} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={this.userSelectedArea}>
+                  <select value={selectedAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
                     <option value="">-- Select Area --</option>
-                    {areas.map((area, index) => (
-                      <option key={index} value={area.areaId}>
+                    {areas.map((area) => (
+                      <option key={area.areaId} value={area.areaId}>
                         {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
                       </option>
                     ))}
@@ -842,78 +362,113 @@ class App extends Component {
               )}
             </div>
           </div>
-
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
-            <div className='menu-buttons'>
-              {(() => {
-                if (context_id === 0) {
-                  return listingButtons;
-                } else if (context_id === 1) {
-                  return areaButtons;
-                } else if (context_id === 3) {
-                  return followupButtons;
-                } else {
-                  return 'No quick actions available for this context';
-                }
-              })()}
-            </div>
+            {((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+              <div className='menu-buttons'>
+                {(() => {
+                  if (context_id === 0) {
+                    return listingButtons;
+                  } else if (context_id === 1) {
+                    return areaButtons;
+                  } else if (context_id === 3) {
+                    return followupButtons;
+                  }
+                })()}
+              </div>
+            )}
+
+            {!((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+              <div className='no-actions'>
+                No quick actions available
+              </div>
+            )}
+
           </div>
         </div>
         <div className='main-content'>
-
+          <div id="conversation-select">
+            <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
+              <option value="">-- Select Conversation --</option>
+              {conversationsList.length > 0 && conversationsList.map((conversation, index) => (
+                <option key={index} value={conversation.id}>
+                  {conversation.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
                 if (context_id === 0) {
-                  return "Hi, I'm Paisley! Please select a listing from the dropdown to the left";
+                  return startMessage();
                 } else if (context_id === 1) {
                   return areas.length > 0
-                    ? "Hi, I'm Paisley! Please select an area from the dropdown to the left"
+                    ? startMessage()
                     : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
                 } else if (context_id === 2) {
                   return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";
                 } else if (context_id === 3) {
                   return "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!";
+                } else if (context_id === 4) {
+                  return "Hi, I'm Paisley - in this context you can ask me anything you would like. I am not trained on any particular information and can answer questions about any topic."
                 }
               } else {
                 return messages;
               }
             })()}
           </div>
+          {!this.state.isSwapVibeCollapsed && (
+            <div className='swap-vibe-container'>
+              {swapVibeSection}
+            </div>
+          )}
           <div id="chat-input">
             <select
               className='Context-dropdown'
-              onChange={this.changeContext}
+              onChange={(e) => changeContext(this, e)}
               value={context_id}
               disabled={isLoading || incomingChatInProgress}
             >
               {contextItems}
             </select>
-            <form onSubmit={this.sendMessage}>
-              <textarea
-                value={messageInput}
-                ref={this.textareaRef}
-                className="chat-input-textarea"
-                onChange={(e) => this.setState({ messageInput: e.target.value })}
-                onInput={this.autoGrowTextarea}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage(e);
-                  }
-                }}
-                placeholder="Enter your message..."
-                disabled={isLoading || incomingChatInProgress}
-              />
+            <form onSubmit={(e) => sendMessage(this, e)}>
+              <div className='chat-area'>
+                <textarea
+                  value={userMessage.messageInput}
+                  ref={this.textareaRef}
+                  className="chat-input-textarea"
+                  onChange={(e) => {
+                    const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                    this.setState({ userMessage: newUserMessage })
+                  }}
+                  onInput={() => autoGrowTextarea(this.textareaRef)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(this, e);
+                    }
+                  }}
+                  placeholder="Enter your message..."
+                  disabled={isLoading || incomingChatInProgress}
+                />
+                <button
+                  className='send-button'
+                  disabled={isLoading || incomingChatInProgress}
+                  type="submit">
+                  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9"></polygon>
+                  </svg>
 
+                </button>
+              </div>
               <div className='button-group'>
+                {EnhanceButtons}
+                <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
-                  type="submit">Send</button>
-                <button
-                  disabled={isLoading || incomingChatInProgress}
-                  onClick={this.resetChat}>Reset Chat</button>
+                  onClick={(e) => resetChat(this, e)}>Reset Chat</button>
               </div>
             </form>
           </div>
@@ -926,5 +481,4 @@ class App extends Component {
     );
   }
 }
-
 export default App;

@@ -108,7 +108,6 @@ class App extends Component {
           .then(async (data) => {
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
-              console.log(this.messageManager.messages);
             }
             if (this.state.agentProfileUserId) {
               showLoading(this);

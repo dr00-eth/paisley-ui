@@ -81,7 +81,6 @@ export async function resetChat(context, event) {
           .then(async (data) => {
             for (const message of data) {
               context.messageManager.addMessage(message.role, message.content, true);
-              console.log(context.messageManager.messages);
             }
           })
           .catch(error => console.error(error));
@@ -133,7 +132,6 @@ export async function userSelectedListing(context, event) {
     showLoading(context);
   
     if (selectedListingMlsNumber && selectedListingMlsNumber !== mlsNumber) {
-      console.log("in reset chat if");
       await resetChat(context, event);
     }
     await context.setStateAsync({
@@ -156,7 +154,6 @@ export async function userSelectedListing(context, event) {
     showLoading(context);
   
     if (selectedAreaId && selectedAreaId !== areaId) {
-      console.log("resetting chat");
       resetChat(context, event);
     }
   
@@ -347,7 +344,6 @@ export async function createConversation(context, conversationName) {
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
     if (conversationSearch && conversationName !== '') {
-        console.log('found conversation');
         context.setState({currentConversation: conversationSearch.id});
         return fetchConversation(context, conversationSearch.id);
     }
@@ -404,7 +400,6 @@ export async function updateConversation(context) {
     const conversation = states.find((conversationState) => conversationState.id === conversationId);
     if (conversation) {
       const { state } = conversation;
-      console.log("fetched conversation from KV", state);
       context.messageManager.messages = state.messages;
       await context.setStateAsync({
         messages: state.messages,

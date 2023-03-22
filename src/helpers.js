@@ -317,6 +317,12 @@ export async function getConversations(context, agentProfileUserId) {
   
  export async function storeConversations(context, agentProfileUserId, conversations) {
     const workerURL = context.workerUrl;
+    const {privateMode} = context.state;
+
+    if (Boolean(privateMode) === true) {
+        return;
+    }
+
     try {
       const response = await fetch(workerURL, {
         method: "POST",

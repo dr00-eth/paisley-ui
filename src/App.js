@@ -46,6 +46,7 @@ class App extends Component {
       connection_id: '',
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
+      privateMode: searchParams.get('privateMode') ?? false,
       gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
@@ -239,20 +240,19 @@ class App extends Component {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setState({ userMessage: newUserMessage }, async () => {
-            const userMessage = option.customPrompt;
-            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+          this.setStateAsync({ userMessage: newUserMessage });
+          const userMessagePrompt = option.customPrompt;
+          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
-            if (!messageExists(this, "user", userMessage)) {
-              await addMessage(this, "user", userMessage, true);
-            }
+          if (!messageExists(this, "user", userMessagePrompt)) {
+            await addMessage(this, "user", userMessagePrompt, true);
+          }
 
-            if (!messageExists(this, "assistant", assistantMessage)) {
-              await addMessage(this, "assistant", assistantMessage, true);
-            }
+          if (!messageExists(this, "assistant", assistantMessage)) {
+            await addMessage(this, "assistant", assistantMessage, true);
+          }
 
-            sendMessage(this, e);
-          });
+          await sendMessage(this, e);
         }}>
           {option.label}
         </button>
@@ -263,20 +263,19 @@ class App extends Component {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setState({ userMessage: newUserMessage }, async () => {
-            const userMessage = option.customPrompt;
-            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+          this.setStateAsync({ userMessage: newUserMessage });
+          const userMessagePrompt = option.customPrompt;
+          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
-            if (!messageExists(this, "user", userMessage)) {
-              await addMessage(this, "user", userMessage, true);
-            }
+          if (!messageExists(this, "user", userMessagePrompt)) {
+            await addMessage(this, "user", userMessagePrompt, true);
+          }
 
-            if (!messageExists(this, "assistant", assistantMessage)) {
-              await addMessage(this, "assistant", assistantMessage, true);
-            }
+          if (!messageExists(this, "assistant", assistantMessage)) {
+            await addMessage(this, "assistant", assistantMessage, true);
+          }
 
-            sendMessage(this, e);
-          });
+          await sendMessage(this, e);
         }}>
           {option.label}
         </button>
@@ -287,20 +286,19 @@ class App extends Component {
       return (
         <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
           const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setState({ userMessage: newUserMessage }, async () => {
-            const userMessage = option.customPrompt;
-            const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+          this.setStateAsync({ userMessage: newUserMessage });
+          const userMessagePrompt = option.customPrompt;
+          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
-            if (!messageExists(this, "user", userMessage)) {
-              await addMessage(this, "user", userMessage, true);
-            }
+          if (!messageExists(this, "user", userMessagePrompt)) {
+            await addMessage(this, "user", userMessagePrompt, true);
+          }
 
-            if (!messageExists(this, "assistant", assistantMessage)) {
-              await addMessage(this, "assistant", assistantMessage, true);
-            }
+          if (!messageExists(this, "assistant", assistantMessage)) {
+            await addMessage(this, "assistant", assistantMessage, true);
+          }
 
-            sendMessage(this, e);
-          });
+          await sendMessage(this, e);
         }}>
           {option.label}
         </button>

@@ -428,7 +428,7 @@ export async function updateConversation(context) {
 
     const conversation = conversations.find((conversation) => conversation.id === currentConversation);
 
-    if (conversation) {
+    if (conversation && currentConversation !== '') {
         conversation.state = simplifiedState;
 
         // Update the existing conversation in the array using the map function

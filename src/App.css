@@ -361,8 +361,8 @@ header {
 }
 
 .heart-icon.active {
-  color: var(--secondary-color);
-  animation: fade-in 2.5s;
+  color: red;
+  transition: color 2.5s ease-in-out;
 }
 
 

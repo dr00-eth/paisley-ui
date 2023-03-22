@@ -358,15 +358,12 @@ export async function getConversations(context, agentProfileUserId) {
             const states = await response.json();
             const modifiedStates = states.map(({ id, name }) => ({ id, name }));
             return { modifiedStates, states };
-        } else if (response.status === 404) {
-            // Return an empty array if the worker responds with a 404 error
-            return { modifiedStates: [], states: [] };;
         } else {
             throw new Error("Failed to get state from Cloudflare Worker");
         }
     } catch (error) {
         console.error("No states:", error);
-        return { modifiedStates: [], states: [] };;
+        return { modifiedStates: [], states: [] };
     }
 };
 

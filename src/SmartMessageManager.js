@@ -29,20 +29,28 @@ class SmartMessageManager {
   checkThresholdAndMove(thresholdHours) {
     const threshold = thresholdHours * 60 * 60; // Convert hours to seconds
     const now = Math.floor(Date.now() / 1000);
-
-    this.messages = this.messages.filter((message) => {
-      if (now - message.timestamp > threshold && !message.isFav) {
-        this.deletedMsgs.push({
-          on: Math.floor(Date.now() / 1000),
-          role: message.role,
-          content: message.content,
-          wasFav: message.isFav,
-        });
-        return false;
+  
+    // Find the oldest message matching the criteria
+    let oldestMessage = null;
+    this.messages.forEach((message) => {
+      if (now - message.timestamp > threshold && message.role === 'assistant' && !message.isFav) {
+        if (!oldestMessage || message.timestamp < oldestMessage.timestamp) {
+          oldestMessage = message;
+        }
       }
-      return true;
     });
-  }
+  
+    // If an oldest message is found, remove it from messages and add it to deletedMsgs
+    if (oldestMessage) {
+      this.messages = this.messages.filter((message) => message !== oldestMessage);
+      this.deletedMsgs.push({
+        deletedOn: Math.floor(Date.now() / 1000),
+        role: oldestMessage.role,
+        content: oldestMessage.content,
+        originalTimestamp: oldestMessage.timestamp,
+      });
+    }
+  }  
 
   toggleFavorite(id) {
     this.messages = this.messages.map((message) => {

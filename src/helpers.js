@@ -341,7 +341,8 @@ function getSimplifiedState(context) {
         selectedAreaName: context.state.selectedAreaName,
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
-        listingAreas: context.state.listingAreas
+        listingAreas: context.state.listingAreas,
+        deletedMsgs: context.state.deletedMsgs
     };
 }
 
@@ -465,7 +466,8 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaName: state.selectedAreaName,
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
-            listingAreas: state.listingAreas
+            listingAreas: state.listingAreas,
+            deletedMsgs: context.state.deletedMsgs
         });
     }
 }

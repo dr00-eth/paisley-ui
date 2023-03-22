@@ -62,17 +62,19 @@ export function messageExists(context, role, content) {
 export async function resetChat(context, event) {
     event.preventDefault();
     showLoading(context);
-    const requestOptions = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: context.state.connection_id, context_id: context.state.context_id }),
-    };
+    const newUserMessage = {...context.userMessage, messageInput: ""}
     try {
-        const response = await fetch(`${context.apiServerUrl}/api/newchat`, requestOptions);
-        if (!response.ok) {
-            hideLoading(context);
-            throw new Error('Failed to reset chat');
-        }
+        await context.setStateAsync({
+            messages: context.messageManager.resetMessages(),
+            userMessage: newUserMessage,
+            displayMessages: [],
+            isUserListingSelectDisabled: false,
+            selectedListingMlsID: '',
+            selectedListingMlsNumber: '',
+            selectedAreaId: 0,
+            selectedListingAreaId: 0,
+            currentConversation: ''
+        });
         await fetch(`${context.apiServerUrl}/api/getmessages/${context.state.context_id}/${context.state.connection_id}`)
           .then(async response => await response.json())
           .then(async (data) => {
@@ -82,17 +84,6 @@ export async function resetChat(context, event) {
             }
           })
           .catch(error => console.error(error));
-
-        await context.setStateAsync({
-            messages: context.messageManager.resetMessages(),
-            userMessage: context.messageManager.userMessage,
-            displayMessages: [],
-            isUserListingSelectDisabled: false,
-            selectedListingMlsID: '',
-            selectedListingMlsNumber: '',
-            selectedAreaId: 0,
-            selectedListingAreaId: 0
-        });
         await getAgentProfile(context);
         hideLoading(context);
     } catch (error) {
@@ -295,8 +286,7 @@ function getSimplifiedState(context) {
       selectedAreaName: context.state.selectedAreaName,
       selectedAreaId: context.state.selectedAreaId,
       selectedListingAddress: context.state.selectedListingAddress,
-      listingAreas: context.state.listingAreas,
-      areas: context.state.areas
+      listingAreas: context.state.listingAreas
     };
   }
 
@@ -419,8 +409,7 @@ export async function updateConversation(context) {
         selectedAreaName: state.selectedAreaName,
         selectedAreaId: state.selectedAreaId,
         selectedListingAddress: state.selectedListingAddress,
-        listingAreas: state.listingAreas,
-        areas: state.areas
+        listingAreas: state.listingAreas
       });
     }
   }

@@ -1,15 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile, getAreaUserListings, getAgentProfile } from "./utils";
 
-export function updateDisplayMessagesWithFavorites(context) {
-    const { displayMessages, messages } = context.state;
-    const updatedDisplayMessages = displayMessages.map(msg => {
-        const updatedMessage = messages.find(m => m.id === msg.id);
-        return updatedMessage ? updatedMessage : msg;
-    });
-    context.setState({ displayMessages: updatedDisplayMessages });
-}
-
 export function showLoading(context) {
     context.setState({ isLoading: true });
 }
@@ -52,6 +43,16 @@ export function handleToggleFavorite(context, id) {
     context.setState({ messages: context.messageManager.getMessages() }, () => {
         updateDisplayMessagesWithFavorites(context);
     });
+}
+
+export function updateDisplayMessagesWithFavorites(context) {
+    const { displayMessages } = context.state;
+    const messageManagerMessages = context.messageManager.messages;
+    const updatedDisplayMessages = displayMessages.map(msg => {
+        const updatedMessage = messageManagerMessages.find(m => m.id === msg.id);
+        return updatedMessage ? updatedMessage : msg;
+    });
+    context.setState({ displayMessages: updatedDisplayMessages });
 }
 
 export function messageExists(context, role, content) {
@@ -103,7 +104,9 @@ export async function changeContext(context, event) {
                 context.messageManager.addMessage(message.role, message.content, true);
               }
             if (newContextId === 2 || newContextId === 3) {
+                showLoading(context);
                 await getAgentProfile(context);
+                hideLoading(context);
             }
         })
         .catch(error => console.error(error));
@@ -185,14 +188,16 @@ export async function userSelectedListing(context, event) {
       selectedListingAreaId,
       context.state.selectedListingAreaId ? true : false
     );
-    hideLoading(context);
     generateAreaKit(context);
+    hideLoading(context);
   }  
 
 export async function userSelectedConversation(context, event) {
     event.preventDefault();
     const conversationId = event.target.value;
+    showLoading(context);
     await fetchConversation(context, conversationId);
+    hideLoading(context);
     await context.setStateAsync({
         currentConversation: conversationId
     });
@@ -225,8 +230,6 @@ export async function handleEnhancePromptClick(context, event) {
     event.preventDefault();
     const { userMessage } = context.state;
     if (userMessage.messageInput.trim() === "") return;
-
-    showLoading(context);
 
     try {
         showLoading(context);

@@ -214,6 +214,12 @@ header {
   position: relative;
   padding-bottom: 3.5rem;
   box-sizing: content-box;
+  display: flex;
+  flex-direction: column;
+}
+
+#chat-display li {
+  margin-bottom: 0.5rem;
 }
 
 /* width */
@@ -244,6 +250,12 @@ header {
 
 .chat-bubble.assistant.kit {
   background-color: rgba(50, 205, 50, 0.3);
+  transition: background-color 2s ease-in-out;
+}
+
+.chat-bubble.assistant.favorite {
+  box-shadow: 5px 5px 5px 3px rgba(139,0,0,0.75);
+  transition: box-shadow 2s ease-in-out;
 }
 
 .chat-bubble.assistant {
@@ -340,7 +352,7 @@ header {
 
 .heart-icon.active {
   color: var(--secondary-color);
-  animation: fade-out 2.5s;
+  animation: fade-in 2.5s;
 }
 
 

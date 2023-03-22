@@ -1,19 +1,19 @@
-import { waitForIncomingChatToFinish, showLoading, hideLoading, updateConversation } from './helpers';
+import { waitForIncomingChatToFinish, updateConversation } from './helpers';
 
-export function getUserAreas(context) {
+export async function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
     const requestOptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: agentProfileUserId, includeTerritories: false, consumer: 0 }),
     }
-    fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
-        .then(response => response.json())
-        .then(data => {
+    await fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
+        .then(async response => await response.json())
+        .then(async data => {
             const areas = data.areas;
             areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
             // update state with fetched listings
-            context.setState({ areas });
+            context.setStateAsync({ areas });
         })
         .catch(error => {
             // handle error
@@ -28,9 +28,9 @@ export async function getUserListings(context) {
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false }),
     }
-    fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
-        .then(response => response.json())
-        .then(data => {
+    await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
+        .then(async response => await response.json())
+        .then(async data => {
             // filter properties with listDate > 60 days ago
             const listings = data.properties.filter(property => {
                 const listDate = new Date(property.listDate);
@@ -42,7 +42,7 @@ export async function getUserListings(context) {
             listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
 
             // update state with fetched listings
-            context.setState({ listings });
+            context.setStateAsync({ listings });
         })
         .catch(error => {
             // handle error
@@ -92,7 +92,7 @@ export async function getListingAreas(context) {
     await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
         .then(async response => await response.json())
         .then(async (data) => {
-            const listingAreas = data.areas;
+            const listingAreas = data.areas.filter((area) => area.areaApnCount < 50000);
             listingAreas.sort((a, b) => b.areaApnCount - a.areaApnCount);
             // update state with fetched listing areas
             await context.setStateAsync({ listingAreas });
@@ -304,7 +304,6 @@ export async function getAgentProfile(context, event) {
         event.preventDefault();
     }
     const userID = event ? event.target[0].value : context.state.agentProfileUserId;
-    showLoading(context);
     const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
     const requestOptions = {
         method: 'POST',
@@ -329,9 +328,8 @@ export async function getAgentProfile(context, event) {
     await addMessage(context, "user", agentPrompt, true);
 
     await context.setStateAsync({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
-    getUserListings(context);
-    getUserAreas(context);
-    hideLoading(context);
+    await getUserListings(context);
+    await getUserAreas(context);
 }
 
 export async function getAreaStatisticsPrompt(context, areaId, changeArea = false) {

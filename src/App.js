@@ -3,6 +3,10 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
+
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
@@ -29,7 +33,9 @@ import {
   formatKey,
   getConversations,
   userSelectedConversation,
-  updateConversation
+  updateConversation,
+  showLoading,
+  hideLoading
 } from './helpers';
 import { sendMessage, addMessage, getAgentProfile } from './utils';
 
@@ -105,8 +111,10 @@ class App extends Component {
               console.log(this.messageManager.messages);
             }
             if (this.state.agentProfileUserId) {
+              showLoading(this);
               await getAgentProfile(this);
-              const {modifiedStates, states} = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              hideLoading(this);
+              const { modifiedStates, states } = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
               await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
             }
           })
@@ -326,7 +334,7 @@ class App extends Component {
       return (
         <div
           key={index}
-          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""} ${msg.isFav ? "kit" : ""}`}
+          className={`chat-bubble ${msg.role === "user" ? "user" : "assistant"} ${msg.isKit ? "kit" : ""} ${msg.isFav ? "favorite" : ""}`}
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
@@ -350,8 +358,9 @@ class App extends Component {
               className={`heart-icon ${msg.isFav ? "active" : ""}`}
               onClick={() => handleToggleFavorite(this, msg.id)}
             >
-              ❤️
-            </span>)}
+              <FontAwesomeIcon icon={msg.isFav ? faSolidHeart : faRegularHeart} />
+            </span>
+          )}
         </div>
       );
     });
@@ -359,8 +368,9 @@ class App extends Component {
     const startMessage = () => {
       return (
         <div>
-          <p>Welcome to Paisley, your ultimate real estate productivity booster and colleague!</p>
-          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen. Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
+          <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
+          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen.</p>
+          <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
           <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
           <ul>
             <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
@@ -369,7 +379,8 @@ class App extends Component {
             <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
             <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
           </ul>
-          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley. Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
+          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
+          <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
           <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
         </div>
       )
@@ -379,13 +390,19 @@ class App extends Component {
     return (
       <div className="App">
         <div id="loading-container" style={{ display: isLoading ? 'flex' : 'none' }}>
-          <p>Loading...</p>
+          <p>Learning...</p>
         </div>
         <div className="sidebar">
           <div className='sidebar-top'>
             <div className="sidebar-section">
               <h1 className="sidebar-title">TheGenie - Paisley</h1>
-              <form className='user-form' onSubmit={(e) => getAgentProfile(this, e)}>
+              <form
+                className='user-form'
+                onSubmit={(e) => {
+                  showLoading(this);
+                  getAgentProfile(this, e);
+                  hideLoading(this);
+                }}>
                 {isUserIdInputDisabled === false && (
                   <input
                     type="text"

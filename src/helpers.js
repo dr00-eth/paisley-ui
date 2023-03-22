@@ -72,7 +72,7 @@ export function messageExists(context, role, content) {
 export async function resetChat(context, event) {
     event.preventDefault();
     showLoading(context);
-    const newUserMessage = { ...context.userMessage, messageInput: "" }
+    const newUserMessage = { ...context.userMessage, messageInput: "" };
     try {
         await context.setStateAsync({
             messages: context.messageManager.resetMessages(),
@@ -93,7 +93,9 @@ export async function resetChat(context, event) {
                 }
             })
             .catch(error => console.error(error));
-        await getAgentProfile(context);
+        if (context.state.context_id !== 4) {
+            await getAgentProfile(context);
+        }
         hideLoading(context);
     } catch (error) {
         hideLoading(context);

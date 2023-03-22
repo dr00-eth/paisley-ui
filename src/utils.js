@@ -261,7 +261,7 @@ export async function sendMessage(context, event) {
                 }
             })
             .catch(error => console.error(error));
-        await updateConversation(context);
+        
         const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" }
         await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
 
@@ -288,6 +288,8 @@ export async function sendMessage(context, event) {
                 console.log(data.tokencounts);
             })
             .catch(error => console.error(error));
+
+        await updateConversation(context);
     }
 }
 

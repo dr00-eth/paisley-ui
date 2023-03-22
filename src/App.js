@@ -466,19 +466,26 @@ class App extends Component {
           </div>
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
-            <div className='menu-buttons'>
-              {(() => {
-                if (context_id === 0) {
-                  return listingButtons;
-                } else if (context_id === 1) {
-                  return areaButtons;
-                } else if (context_id === 3) {
-                  return followupButtons;
-                } else {
-                  return 'No quick actions available for this context';
-                }
-              })()}
-            </div>
+            {((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+              <div className='menu-buttons'>
+                {(() => {
+                  if (context_id === 0) {
+                    return listingButtons;
+                  } else if (context_id === 1) {
+                    return areaButtons;
+                  } else if (context_id === 3) {
+                    return followupButtons;
+                  }
+                })()}
+              </div>
+            )}
+
+            {!((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+              <div className='no-actions'>
+                No quick actions available
+              </div>
+            )}
+
           </div>
         </div>
         <div className='main-content'>

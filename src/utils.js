@@ -239,8 +239,12 @@ export async function sendMessage(context, event) {
             writingStyle: userMessage.writingStyle,
             targetAudience: userMessage.targetAudience
         }];
-
-        await createConversation(context, currentConversation !== '' ? currentConversation : userMessage.messageInput.slice(0,30));
+        if (currentConversation !== '') {
+            await updateConversation(context);
+        } else {
+            await createConversation(context, userMessage.messageInput.slice(0,30));
+        }
+        
 
         const requestBody = {
             user_id: connection_id,

@@ -1,5 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
-import { generateListingKit, generateAreaKit, getAreaStatisticsPrompt, getPropertyProfile, getAreaUserListings, getAgentProfile } from "./utils";
+import {
+    generateListingKit,
+    generateAreaKit,
+    getAreaStatisticsPrompt,
+    getPropertyProfile,
+    getAreaUserListings,
+    getAgentProfile,
+    addMessage,
+    sendMessage
+} from "./utils";
 
 export function showLoading(context) {
     context.setState({ isLoading: true });
@@ -63,7 +72,7 @@ export function messageExists(context, role, content) {
 export async function resetChat(context, event) {
     event.preventDefault();
     showLoading(context);
-    const newUserMessage = {...context.userMessage, messageInput: ""}
+    const newUserMessage = { ...context.userMessage, messageInput: "" }
     try {
         await context.setStateAsync({
             messages: context.messageManager.resetMessages(),
@@ -77,13 +86,13 @@ export async function resetChat(context, event) {
             currentConversation: ''
         });
         await fetch(`${context.apiServerUrl}/api/getmessages/${context.state.context_id}/${context.state.connection_id}`)
-          .then(async response => await response.json())
-          .then(async (data) => {
-            for (const message of data) {
-              context.messageManager.addMessage(message.role, message.content, true);
-            }
-          })
-          .catch(error => console.error(error));
+            .then(async response => await response.json())
+            .then(async (data) => {
+                for (const message of data) {
+                    context.messageManager.addMessage(message.role, message.content, true);
+                }
+            })
+            .catch(error => console.error(error));
         await getAgentProfile(context);
         hideLoading(context);
     } catch (error) {
@@ -101,7 +110,7 @@ export async function changeContext(context, event) {
         .then(async (data) => {
             for (const message of data) {
                 context.messageManager.addMessage(message.role, message.content, true);
-              }
+            }
             if (newContextId === 2 || newContextId === 3) {
                 showLoading(context);
                 await getAgentProfile(context);
@@ -128,66 +137,66 @@ export async function userSelectedListing(context, event) {
     event.preventDefault();
     const { selectedListingMlsNumber } = context.state;
     const [mlsID, mlsNumber] = event.target.value.split('_');
-  
+
     showLoading(context);
-  
+
     if (selectedListingMlsNumber && selectedListingMlsNumber !== mlsNumber) {
-      await resetChat(context, event);
+        await resetChat(context, event);
     }
     await context.setStateAsync({
-      selectedListingMlsID: mlsID,
-      selectedListingMlsNumber: mlsNumber
+        selectedListingMlsID: mlsID,
+        selectedListingMlsNumber: mlsNumber
     });
-  
+
     const listingAddress = await getPropertyProfile(context, mlsID, mlsNumber);
     generateListingKit(context);
     await createConversation(context, `${listingAddress}`);
-  
-    hideLoading(context);
-  }
-  
 
-  export async function userSelectedArea(context, event) {
+    hideLoading(context);
+}
+
+
+export async function userSelectedArea(context, event) {
     event.preventDefault();
     const { selectedAreaId } = context.state;
     const areaId = event.target.value;
     showLoading(context);
-  
+
     if (selectedAreaId && selectedAreaId !== areaId) {
-      resetChat(context, event);
+        resetChat(context, event);
     }
-  
+
     await context.setStateAsync({
-      selectedAreaId: areaId,
+        selectedAreaId: areaId,
     });
-  
+
     await getAreaUserListings(context, areaId);
     const areaName = await getAreaStatisticsPrompt(context, areaId);
-  
+
     generateAreaKit(context);
-  
+
     await createConversation(context, `${areaName}`);
     hideLoading(context);
-  }
-  
+}
 
-  export async function userSelectedListingArea(context, event) {
+
+export async function userSelectedListingArea(context, event) {
     event.preventDefault();
     const selectedListingAreaId = event.target.value;
-  
+
     await context.setStateAsync({
-      selectedListingAreaId,
+        selectedListingAreaId,
     });
-  
+
     showLoading(context);
     await getAreaStatisticsPrompt(
-      context,
-      selectedListingAreaId,
-      context.state.selectedListingAreaId ? true : false
+        context,
+        selectedListingAreaId,
+        context.state.selectedListingAreaId ? true : false
     );
     generateAreaKit(context);
     hideLoading(context);
-  }  
+}
 
 export async function userSelectedConversation(context, event) {
     event.preventDefault();
@@ -267,84 +276,130 @@ export function handleTargetAudienceChange(context, e) {
 
 export function formatKey(str) {
     return str
-        .replace('plus','+')
+        .replace('plus', '+')
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-};  
+};
+
+export function createButtons(context, menuItems, userMessage, isLoading, incomingChatInProgress) {
+    return menuItems.map((option, index) => {
+        return (
+            <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
+                const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                context.setStateAsync({ userMessage: newUserMessage });
+                const userMessagePrompt = option.customPrompt;
+                const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+
+                if (!messageExists(context, "user", userMessagePrompt)) {
+                    await addMessage(context, "user", userMessagePrompt, true);
+                }
+
+                if (!messageExists(context, "assistant", assistantMessage)) {
+                    await addMessage(context, "assistant", assistantMessage, true);
+                }
+
+                await sendMessage(context, e);
+            }}>
+                {option.label}
+            </button>
+        );
+    });
+}
+
+export const startMessage = () => {
+    return (
+        <div>
+            <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
+            <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen.</p>
+            <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
+            <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+            <ul>
+                <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
+                <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
+                <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
+                <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
+                <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
+            </ul>
+            <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
+            <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
+            <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
+        </div>
+    )
+};
 
 function getSimplifiedState(context) {
     return {
-      messages: context.messageManager.getMessages(),
-      displayMessages: context.state.displayMessages,
-      context_id: context.state.context_id,
-      agentProfileUserId: context.state.agentProfileUserId,
-      gptModel: context.state.gptModel,
-      selectedListingMlsID: context.state.selectedListingMlsID,
-      selectedListingMlsNumber: context.state.selectedListingMlsNumber,
-      selectedListingAreaId: context.state.selectedListingAreaId,
-      selectedAreaName: context.state.selectedAreaName,
-      selectedAreaId: context.state.selectedAreaId,
-      selectedListingAddress: context.state.selectedListingAddress,
-      listingAreas: context.state.listingAreas
+        messages: context.messageManager.getMessages(),
+        displayMessages: context.state.displayMessages,
+        context_id: context.state.context_id,
+        agentProfileUserId: context.state.agentProfileUserId,
+        gptModel: context.state.gptModel,
+        selectedListingMlsID: context.state.selectedListingMlsID,
+        selectedListingMlsNumber: context.state.selectedListingMlsNumber,
+        selectedListingAreaId: context.state.selectedListingAreaId,
+        selectedAreaName: context.state.selectedAreaName,
+        selectedAreaId: context.state.selectedAreaId,
+        selectedListingAddress: context.state.selectedListingAddress,
+        listingAreas: context.state.listingAreas
     };
-  }
+}
 
 export async function getConversations(context, agentProfileUserId) {
     const workerURL = context.workerUrl;
     try {
-      const response = await fetch(workerURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "getStates", agentProfileUserId: agentProfileUserId }),
-      });
-  
-      if (response.ok) {
-        const states = await response.json();
-        const modifiedStates = states.map(({ id, name }) => ({ id, name }));
-        return {modifiedStates, states};
-      } else if (response.status === 404) {
-        // Return an empty array if the worker responds with a 404 error
-        return { modifiedStates: [], states: [] };;
-      } else {
-        throw new Error("Failed to get state from Cloudflare Worker");
-      }
+        const response = await fetch(workerURL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method: "getStates", agentProfileUserId: agentProfileUserId }),
+        });
+
+        if (response.ok) {
+            const states = await response.json();
+            const modifiedStates = states.map(({ id, name }) => ({ id, name }));
+            return { modifiedStates, states };
+        } else if (response.status === 404) {
+            // Return an empty array if the worker responds with a 404 error
+            return { modifiedStates: [], states: [] };;
+        } else {
+            throw new Error("Failed to get state from Cloudflare Worker");
+        }
     } catch (error) {
-      console.error("No states:", error);
-      return { modifiedStates: [], states: [] };;
+        console.error("No states:", error);
+        return { modifiedStates: [], states: [] };;
     }
-  };  
-  
- export async function storeConversations(context, agentProfileUserId, conversations) {
+};
+
+export async function storeConversations(context, agentProfileUserId, conversations) {
     const workerURL = context.workerUrl;
-    const {privateMode} = context.state;
+    const { privateMode } = context.state;
 
     if (Boolean(privateMode) === true) {
         return;
     }
 
     try {
-      const response = await fetch(workerURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "storeStates", agentProfileUserId: agentProfileUserId, states: conversations }),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to store state in Cloudflare Worker");
-      }
+        const response = await fetch(workerURL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method: "storeStates", agentProfileUserId: agentProfileUserId, states: conversations }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to store state in Cloudflare Worker");
+        }
     } catch (error) {
-      console.error("Error storing state:", error);
+        console.error("Error storing state:", error);
     }
-  };
-  
+};
+
 export async function createConversation(context, conversationName) {
     const { agentProfileUserId, conversations, conversationsList } = context.state;
 
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
     if (conversationSearch && conversationName !== '') {
-        context.setState({currentConversation: conversationSearch.id});
+        context.setState({ currentConversation: conversationSearch.id });
         return fetchConversation(context, conversationSearch.id);
     }
 
@@ -357,7 +412,7 @@ export async function createConversation(context, conversationName) {
     }
 
     const updatedConversations = [...conversations, newConversation];
-    const updatedConversationList = [...conversationsList, {id: newConversation.id, name: newConversation.name}]
+    const updatedConversationList = [...conversationsList, { id: newConversation.id, name: newConversation.name }]
 
     await storeConversations(context, agentProfileUserId, updatedConversations);
 
@@ -370,51 +425,50 @@ export async function createConversation(context, conversationName) {
 
 export async function updateConversation(context) {
     const { currentConversation, conversations, agentProfileUserId, userMessage } = context.state;
-  
-    const simplifiedState = getSimplifiedState(context);
-  
-    const conversation = conversations.find((conversation) => conversation.id === currentConversation);
-  
-    if (conversation) {
-      conversation.state = simplifiedState;
-  
-      // Update the existing conversation in the array using the map function
-      const updatedConversations = conversations.map((c) =>
-        c.id === conversation.id ? { ...c, state: simplifiedState } : c
-      );
-  
-      await storeConversations(context, agentProfileUserId, updatedConversations);
-      await context.setStateAsync({
-        conversations: updatedConversations
-      });
-    } else {
-      await createConversation(context, userMessage.messageInput.slice(0, 30));
-    }
-  }  
 
-  export async function fetchConversation(context, conversationId) {
+    const simplifiedState = getSimplifiedState(context);
+
+    const conversation = conversations.find((conversation) => conversation.id === currentConversation);
+
+    if (conversation) {
+        conversation.state = simplifiedState;
+
+        // Update the existing conversation in the array using the map function
+        const updatedConversations = conversations.map((c) =>
+            c.id === conversation.id ? { ...c, state: simplifiedState } : c
+        );
+
+        await storeConversations(context, agentProfileUserId, updatedConversations);
+        await context.setStateAsync({
+            conversations: updatedConversations
+        });
+    } else {
+        await createConversation(context, userMessage.messageInput.slice(0, 30));
+    }
+}
+
+export async function fetchConversation(context, conversationId) {
     const { agentProfileUserId } = context.state;
-  
+
     const { states } = await getConversations(context, agentProfileUserId); // eslint-disable-line no-unused-vars
-  
+
     const conversation = states.find((conversationState) => conversationState.id === conversationId);
     if (conversation) {
-      const { state } = conversation;
-      context.messageManager.messages = state.messages;
-      await context.setStateAsync({
-        messages: state.messages,
-        displayMessages: state.displayMessages,
-        context_id: state.context_id,
-        agentProfileUserId: state.agentProfileUserId,
-        gptModel: state.gptModel,
-        selectedListingMlsID: state.selectedListingMlsID,
-        selectedListingMlsNumber: state.selectedListingMlsNumber,
-        selectedListingAreaId: state.selectedListingAreaId,
-        selectedAreaName: state.selectedAreaName,
-        selectedAreaId: state.selectedAreaId,
-        selectedListingAddress: state.selectedListingAddress,
-        listingAreas: state.listingAreas
-      });
+        const { state } = conversation;
+        context.messageManager.messages = state.messages;
+        await context.setStateAsync({
+            messages: state.messages,
+            displayMessages: state.displayMessages,
+            context_id: state.context_id,
+            agentProfileUserId: state.agentProfileUserId,
+            gptModel: state.gptModel,
+            selectedListingMlsID: state.selectedListingMlsID,
+            selectedListingMlsNumber: state.selectedListingMlsNumber,
+            selectedListingAreaId: state.selectedListingAreaId,
+            selectedAreaName: state.selectedAreaName,
+            selectedAreaId: state.selectedAreaId,
+            selectedListingAddress: state.selectedListingAddress,
+            listingAreas: state.listingAreas
+        });
     }
-  }
-  
+}

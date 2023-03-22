@@ -7,18 +7,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
+import {contextItems} from './contexts';
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
   FOLLOWUPMENUITEMS as followupMenuItems,
-} from './constants'
+} from './constants';
 import SmartMessageManager from './SmartMessageManager';
 import {
   scrollToBottom,
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  messageExists,
   resetChat,
   changeContext,
   handleMessage,
@@ -35,9 +35,11 @@ import {
   userSelectedConversation,
   updateConversation,
   showLoading,
-  hideLoading
+  hideLoading,
+  createButtons,
+  startMessage
 } from './helpers';
-import { sendMessage, addMessage, getAgentProfile } from './utils';
+import { sendMessage, getAgentProfile } from './utils';
 
 class App extends Component {
   constructor(props) {
@@ -243,90 +245,9 @@ class App extends Component {
       </button>
     );
 
-    const listingButtons = listingMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setStateAsync({ userMessage: newUserMessage });
-          const userMessagePrompt = option.customPrompt;
-          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-
-          if (!messageExists(this, "user", userMessagePrompt)) {
-            await addMessage(this, "user", userMessagePrompt, true);
-          }
-
-          if (!messageExists(this, "assistant", assistantMessage)) {
-            await addMessage(this, "assistant", assistantMessage, true);
-          }
-
-          await sendMessage(this, e);
-        }}>
-          {option.label}
-        </button>
-      );
-    });
-
-    const areaButtons = areaMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setStateAsync({ userMessage: newUserMessage });
-          const userMessagePrompt = option.customPrompt;
-          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-
-          if (!messageExists(this, "user", userMessagePrompt)) {
-            await addMessage(this, "user", userMessagePrompt, true);
-          }
-
-          if (!messageExists(this, "assistant", assistantMessage)) {
-            await addMessage(this, "assistant", assistantMessage, true);
-          }
-
-          await sendMessage(this, e);
-        }}>
-          {option.label}
-        </button>
-      );
-    });
-
-    const followupButtons = followupMenuItems.map((option, index) => {
-      return (
-        <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-          const newUserMessage = { ...userMessage, messageInput: e.target.value };
-          this.setStateAsync({ userMessage: newUserMessage });
-          const userMessagePrompt = option.customPrompt;
-          const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
-
-          if (!messageExists(this, "user", userMessagePrompt)) {
-            await addMessage(this, "user", userMessagePrompt, true);
-          }
-
-          if (!messageExists(this, "assistant", assistantMessage)) {
-            await addMessage(this, "assistant", assistantMessage, true);
-          }
-
-          await sendMessage(this, e);
-        }}>
-          {option.label}
-        </button>
-      );
-    });
-
-    const contextOptions = [
-      { value: 0, label: 'Listing Focused' },
-      { value: 1, label: 'Area Focused' },
-      { value: 2, label: 'RE Coaching' },
-      { value: 3, label: 'Follow Up' },
-      { value: 4, label: 'ChatGPT' }
-    ];
-
-    const contextItems = contextOptions.map((option, index) => {
-      return (
-        <option key={index} value={option.value}>
-          {option.label}
-        </option>
-      );
-    });
+    const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
@@ -363,28 +284,6 @@ class App extends Component {
         </div>
       );
     });
-
-    const startMessage = () => {
-      return (
-        <div>
-          <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
-          <p>To get started, simply type in your question or prompt in the chat bar on the bottom right of your screen.</p>
-          <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
-          <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
-          <ul>
-            <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
-            <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
-            <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
-            <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
-            <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
-          </ul>
-          <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
-          <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
-          <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
-        </div>
-      )
-    };
-
 
     return (
       <div className="App">

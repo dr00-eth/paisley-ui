@@ -163,6 +163,7 @@ header {
 .Content-dropdown option,
 .Context-dropdown option {
   color: black;
+  background-color: white;
 }
 
 .Context-dropdown {

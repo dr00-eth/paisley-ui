@@ -71,8 +71,9 @@ export function messageExists(context, role, content) {
 
 export async function resetChat(context, event) {
     event.preventDefault();
+    const { userMessage } = context.state;
     showLoading(context);
-    const newUserMessage = { ...context.userMessage, messageInput: "" };
+    const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
     try {
         await context.setStateAsync({
             messages: context.messageManager.resetMessages(),
@@ -165,7 +166,7 @@ export async function userSelectedArea(context, event) {
     showLoading(context);
 
     if (selectedAreaId && selectedAreaId !== areaId) {
-        resetChat(context, event);
+        await resetChat(context, event);
     }
 
     await context.setStateAsync({
@@ -180,7 +181,6 @@ export async function userSelectedArea(context, event) {
     await createConversation(context, `${areaName}`);
     hideLoading(context);
 }
-
 
 export async function userSelectedListingArea(context, event) {
     event.preventDefault();

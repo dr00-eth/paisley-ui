@@ -433,7 +433,7 @@ class App extends Component {
             >
               {contextItems}
             </select>
-            <form onSubmit={(e) => sendMessage(this, e)}>
+            <form onSubmit={async (e) => await sendMessage(this, e)}>
               <div className='chat-area'>
                 <textarea
                   value={userMessage.messageInput}
@@ -444,10 +444,10 @@ class App extends Component {
                     this.setStateAsync({ userMessage: newUserMessage })
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
-                  onKeyDown={(e) => {
+                  onKeyDown={async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      sendMessage(this, e);
+                      await sendMessage(this, e);
                     }
                   }}
                   placeholder="Enter your message..."
@@ -469,7 +469,7 @@ class App extends Component {
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={(e) => resetChat(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetChat(this, e)}>Reset Chat</button>
               </div>
             </form>
           </div>

@@ -157,7 +157,7 @@ class App extends Component {
         if (this.state.isWaitingForMessages) {
           this.MySwal.fire({
             title: 'Please be patient',
-            text: 'We\'re experiencing heavy use right now. Hang on tight!',
+            text: 'We\'re experiencing heavy use right now. Hang tight!',
             icon: 'info',
             toast: true,
             timerProgressBar: true,

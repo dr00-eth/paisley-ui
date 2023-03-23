@@ -342,7 +342,7 @@ export const startMessage = () => {
                 <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
                 <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
             </ul>
-            <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
+            <p>Don't forget, you can also use the menu below to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
             <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
             <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
         </div>

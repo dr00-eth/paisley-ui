@@ -108,6 +108,8 @@ class App extends Component {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
     this.updateInterval = setInterval(async () => {
       const latestVersion = await this.fetchLatestVersion();
+      console.log("latest ver response", latestVersion);
+      console.log("latest ver state", this.state.appVersion);
       if (latestVersion && this.state.appVersion !== latestVersion) {
         this.setState({ appVersion: latestVersion });
         this.showUpdateAlert();
@@ -125,7 +127,8 @@ class App extends Component {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(async response => await response.json())
           .then(async (data) => {
-            await this.setStateAsync({appVersion: this.fetchLatestVersion()})
+            const latestVersion = await this.fetchLatestVersion();
+            await this.setStateAsync({appVersion: latestVersion})
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }

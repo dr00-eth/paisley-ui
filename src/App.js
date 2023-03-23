@@ -47,7 +47,7 @@ class App extends Component {
     this.messageManager = new SmartMessageManager();
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
-      messages: this.messageManager.getMessages(),
+      messages: this.messageManager.messages,
       displayMessages: [],
       messageInput: '',
       userMessage: this.messageManager.userMessage,
@@ -128,8 +128,8 @@ class App extends Component {
     //EMIT_EVENT
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
-      callbackData.messages = this.messageManager.getMessages();
-      console.log(this.messageManager.getMessages());
+      callbackData.messages = this.messageManager.getMessagesSimple();
+      console.log(this.messageManager.getMessagesSimple());
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true });
     });
@@ -138,7 +138,7 @@ class App extends Component {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
-      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
+      await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
   }
@@ -433,7 +433,12 @@ class App extends Component {
             >
               {contextItems}
             </select>
-            <form onSubmit={async (e) => await sendMessage(this, e)}>
+            <form onSubmit={async (e) => {
+                const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                await this.setStateAsync({ userMessage: newUserMessage });
+                await sendMessage(this, e)
+                }
+              }>
               <div className='chat-area'>
                 <textarea
                   value={userMessage.messageInput}
@@ -441,12 +446,14 @@ class App extends Component {
                   className="chat-input-textarea"
                   onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                    this.setStateAsync({ userMessage: newUserMessage })
+                    await this.setStateAsync({ userMessage: newUserMessage });
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
+                      const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                      await this.setStateAsync({ userMessage: newUserMessage });
                       await sendMessage(this, e);
                     }
                   }}

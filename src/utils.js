@@ -272,7 +272,7 @@ export async function sendMessage(context, event) {
         await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
 
         const tokenChkBody = {
-            messages: context.messageManager.getMessages(),
+            messages: context.messageManager.getMessagesSimple(),
             model: gptModel
         }
 
@@ -289,7 +289,7 @@ export async function sendMessage(context, event) {
                     console.log("pruning tokens");
                     context.messageManager.checkThresholdAndMove(1);
                     updateConversation(context);
-                    await context.setStateAsync({ messages: context.messageManager.getMessages(), messagesTokenCount: data.tokencounts });
+                    await context.setStateAsync({ messages: context.messageManager.messages, messagesTokenCount: data.tokencounts });
                 }
                 console.log(data.tokencounts);
             })
@@ -301,7 +301,7 @@ export async function sendMessage(context, event) {
 export async function addMessage(context, role, message, isFav = false) {
     try {
         context.messageManager.addMessage(role, message, isFav);
-        await context.setStateAsync({ messages: context.messageManager.getMessages() })
+        await context.setStateAsync({ messages: context.messageManager.messages })
     } catch (error) {
         console.error('Error in addMessage:', error);
     }

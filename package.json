@@ -49,8 +49,5 @@
   "devDependencies": {
     "husky": "^8.0.0",
     "lint-staged": "^13.2.0"
-  },
-  "lint-staged": {
-    "public/version.json": "node increment-version.js && git add"
   }
 }

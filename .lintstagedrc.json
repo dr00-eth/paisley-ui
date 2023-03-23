@@ -1,0 +1,3 @@
+{
+    "public/version.json": "node increment-version.js && git add"
+}

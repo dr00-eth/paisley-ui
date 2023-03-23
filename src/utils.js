@@ -13,7 +13,7 @@ export async function getUserAreas(context) {
             const areas = data.areas;
             areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
             // update state with fetched listings
-            context.setStateAsync({ areas });
+            await context.setStateAsync({ areas });
         })
         .catch(error => {
             // handle error
@@ -42,7 +42,7 @@ export async function getUserListings(context) {
             listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
 
             // update state with fetched listings
-            context.setStateAsync({ listings });
+            await context.setStateAsync({ listings });
         })
         .catch(error => {
             // handle error
@@ -242,9 +242,9 @@ export async function sendMessage(context, event) {
         if (currentConversation !== '') {
             await updateConversation(context);
         } else {
-            await createConversation(context, userMessage.messageInput.slice(0,30));
+            await createConversation(context, userMessage.messageInput.slice(0, 30));
         }
-        
+
 
         const requestBody = {
             user_id: connection_id,
@@ -267,9 +267,7 @@ export async function sendMessage(context, event) {
                 }
             })
             .catch(error => console.error(error));
-        
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" }
-        await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
+
 
         const tokenChkBody = {
             messages: context.messageManager.getMessagesSimple(),
@@ -295,6 +293,8 @@ export async function sendMessage(context, event) {
             })
             .catch(error => console.error(error));
 
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+        await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
     }
 }
 

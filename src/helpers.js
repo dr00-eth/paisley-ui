@@ -44,7 +44,7 @@ export async function assignMessageIdToDisplayMessage(context, content, messageI
         }
         return msg;
     });
-    context.setStateAsync({ displayMessages: updatedDisplayMessages });
+    await context.setStateAsync({ displayMessages: updatedDisplayMessages });
 }
 
 export function handleToggleFavorite(context, id) {
@@ -289,7 +289,7 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
         return (
             <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
                 const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                context.setStateAsync({ userMessage: newUserMessage });
+                await context.setStateAsync({ userMessage: newUserMessage });
                 const userMessagePrompt = option.customPrompt;
                 const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 

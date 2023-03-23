@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
-import {contextItems} from './contexts';
+import { contextItems } from './contexts';
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
@@ -64,6 +64,7 @@ class App extends Component {
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
       isLoading: false,
+      isWaitingForMessages: false,
       showCopyNotification: {},
       selectedAreaId: 0,
       selectedListingMlsID: '',
@@ -89,6 +90,7 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
+    this.alertTimeout = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
@@ -126,15 +128,33 @@ class App extends Component {
           .catch(error => console.error(error));
       });
     });
-    //MESSAGE
-    this.socket.on('message', (data) => handleMessage(this, data));
-    //EMIT_EVENT
+    //RECEIVE MESSAGE
+    this.socket.on('message', (data) => {
+        handleMessage(this, data);
+      });
+    //ASK FOR MESSAGES
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
       console.log(this.messageManager.getMessagesSimple());
       this.socket.emit('callback_msgs_event', callbackData);
-      this.setState({ incomingChatInProgress: true });
+      this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
+
+      // set a timer to show an alert if no messages are received within 5 seconds
+      this.alertTimeout = setTimeout(() => {
+        if (this.state.isWaitingForMessages) {
+          this.MySwal.fire({
+            title: 'Please be patient',
+            text: 'No messages have been received yet. Please wait a little longer.',
+            icon: 'info',
+            toast: true,
+            timerProgressBar: true,
+            position: 'bottom-end', // set the position of the toast notification
+            showConfirmButton: false, // hide the confirmation button
+            timer: 3000 // set the duration of the toast notification to 5 seconds
+          });
+        }
+      }, 3000);
     });
     //MESSAGE_COMPLETE
     this.socket.on('message_complete', async (data) => {
@@ -242,8 +262,19 @@ class App extends Component {
 
     const EnhanceButtons = (
       <button
-        onClick={(e) => handleEnhancePromptClick(this, e)}
-        disabled={isLoading || incomingChatInProgress || !userMessage.messageInput}
+        onClick={(e) => {
+          if (isLoading || incomingChatInProgress || !userMessage.messageInput) {
+            this.MySwal.fire({
+              title: 'Enhance Prompt',
+              text: 'You must first type a prompt before you can enhance!',
+              icon: 'warning',
+              confirmButtonText: 'OK'
+            });
+          } else {
+            handleEnhancePromptClick(this, e)
+          }
+        }
+        }
       >
         Enhance Prompt
       </button>
@@ -437,11 +468,21 @@ class App extends Component {
               {contextItems}
             </select>
             <form onSubmit={async (e) => {
+              if (e.target.value === '') {
+                this.MySwal.fire({
+                  title: 'Prompt',
+                  text: 'Type a prompt before trying to chat!',
+                  icon: 'warning',
+                  confirmButtonText: 'OK'
+                });
+              } else {
                 const newUserMessage = { ...userMessage, messageInput: e.target.value };
                 await this.setStateAsync({ userMessage: newUserMessage });
-                await sendMessage(this, e)
-                }
-              }>
+                await sendMessage(this, e);
+              }
+
+            }
+            }>
               <div className='chat-area'>
                 <textarea
                   value={userMessage.messageInput}
@@ -455,9 +496,18 @@ class App extends Component {
                   onKeyDown={async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                      await this.setStateAsync({ userMessage: newUserMessage });
-                      await sendMessage(this, e);
+                      if (e.target.value === '') {
+                        this.MySwal.fire({
+                          title: 'Prompt',
+                          text: 'Type a prompt before trying to chat!',
+                          icon: 'warning',
+                          confirmButtonText: 'OK'
+                        });
+                      } else {
+                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                        await this.setStateAsync({ userMessage: newUserMessage });
+                        await sendMessage(this, e);
+                      }
                     }
                   }}
                   placeholder="Enter your message..."

@@ -132,6 +132,8 @@ export function handleMessage(context, data) {
         // Append incoming message to the latest assistant message
         latestDisplayMsg.content += data.message;
     } else {
+        clearTimeout(context.alertTimeout);
+        context.setState({ isWaitingForMessages: false });
         // Add a new assistant message with the incoming message
         displayMessages.push({ role: "assistant", content: data.message, isFav: false });
     }

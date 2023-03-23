@@ -28,6 +28,11 @@ body {
   background-color: var(--primary-color);
 }
 
+body.swal2-shown > [aria-hidden="true"] {
+  transition: 0.1s filter;
+  filter: blur(10px);
+}
+
 .App {
   height: 100%;
   display: flex;
@@ -288,6 +293,7 @@ header {
 .message {
   margin: 5px 0;
   overflow-wrap: break-word;
+  padding-right: 6rem;
 }
 
 .message pre,
@@ -427,6 +433,7 @@ header {
 .menu-buttons button {
   color: var(--accent-color);
 }
+
 
 .menu-buttons {
   display: grid;

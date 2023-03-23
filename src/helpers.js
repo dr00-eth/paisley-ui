@@ -300,7 +300,7 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
                     if (isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
                         MySwal.fire({
                             title: 'Quick Actions',
-                            text: 'Please select a listing to use Quick Actions!',
+                            text: `Please select a ${context.state.context_id === 0 ? 'listing' : 'area'} to use Quick Actions!`,
                             icon: 'warning',
                             confirmButtonText: 'OK'
                         });

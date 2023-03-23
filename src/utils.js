@@ -284,7 +284,7 @@ export async function sendMessage(context, event) {
             .then(async response => await response.json())
             .then(async (data) => {
                 if (data.tokencounts > 3000) {
-                    console.log("pruning tokens");
+                    console.log("pruning some tokens");
                     await context.messageManager.checkThresholdAndMove(context,data.tokencounts);
                     updateConversation(context);
                     await context.setStateAsync({ messagesTokenCount: data.tokencounts });

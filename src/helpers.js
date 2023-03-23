@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import {
     generateListingKit,
     generateAreaKit,
@@ -44,7 +46,7 @@ export async function assignMessageIdToDisplayMessage(context, content, messageI
         }
         return msg;
     });
-    context.setStateAsync({ displayMessages: updatedDisplayMessages });
+    await context.setStateAsync({ displayMessages: updatedDisplayMessages });
 }
 
 export function handleToggleFavorite(context, id) {
@@ -285,24 +287,39 @@ export function formatKey(str) {
 };
 
 export function createButtons(context, menuItems, userMessage, isLoading, incomingChatInProgress) {
+    const MySwal = withReactContent(Swal);
     return menuItems.map((option, index) => {
         return (
-            <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-                const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                context.setStateAsync({ userMessage: newUserMessage });
-                const userMessagePrompt = option.customPrompt;
-                const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+            <button
+                key={index}
+                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) ? 'disabled' : ''}
+                value={option.value}
+                onClick={async (e) => {
+                    if (isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
+                        MySwal.fire({
+                            title: 'Quick Actions',
+                            text: 'Please select a listing to use Quick Actions!',
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                        await context.setStateAsync({ userMessage: newUserMessage });
+                        const userMessagePrompt = option.customPrompt;
+                        const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
 
-                if (!messageExists(context, "user", userMessagePrompt)) {
-                    await addMessage(context, "user", userMessagePrompt, true);
-                }
+                        if (!messageExists(context, "user", userMessagePrompt)) {
+                            await addMessage(context, "user", userMessagePrompt, true);
+                        }
 
-                if (!messageExists(context, "assistant", assistantMessage)) {
-                    await addMessage(context, "assistant", assistantMessage, true);
-                }
+                        if (!messageExists(context, "assistant", assistantMessage)) {
+                            await addMessage(context, "assistant", assistantMessage, true);
+                        }
 
-                await sendMessage(context, e);
-            }}>
+                        await sendMessage(context, e);
+                    }
+
+                }}>
                 {option.label}
             </button>
         );

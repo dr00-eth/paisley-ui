@@ -177,7 +177,6 @@ class App extends Component {
     }
   }
   
-
   showUpdateAlert() {
     this.MySwal.fire({
       title: 'New version available',

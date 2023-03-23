@@ -301,6 +301,7 @@ class App extends Component {
     const EnhanceButtons = (
       <button
         onClick={(e) => {
+          e.preventDefault();
           if (isLoading || incomingChatInProgress || !userMessage.messageInput) {
             this.MySwal.fire({
               title: 'Enhance Prompt',

@@ -50,6 +50,7 @@ class App extends Component {
     this.MySwal = withReactContent(Swal);
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
+      appVersion: '',
       messages: this.messageManager.messages,
       displayMessages: [],
       messageInput: '',
@@ -91,6 +92,7 @@ class App extends Component {
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
     this.alertTimeout = null;
+    this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
@@ -103,6 +105,15 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
+    this.updateInterval = setInterval(async () => {
+      const latestVersion = await this.fetchLatestVersion();
+      if (latestVersion && this.state.appVersion !== latestVersion) {
+        this.setState({ appVersion: latestVersion });
+        this.showUpdateAlert();
+      }
+    }, 30000);
+
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
@@ -114,6 +125,8 @@ class App extends Component {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(async response => await response.json())
           .then(async (data) => {
+            const latestVersion = await this.fetchLatestVersion();
+            await this.setStateAsync({appVersion: latestVersion})
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }
@@ -136,7 +149,7 @@ class App extends Component {
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
-      console.log(this.messageManager.getMessagesSimple());
+      //console.log(this.messageManager.getMessagesSimple());
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
 
@@ -145,7 +158,7 @@ class App extends Component {
         if (this.state.isWaitingForMessages) {
           this.MySwal.fire({
             title: 'Please be patient',
-            text: 'We\'re experiencing heavy use right now. Hang on tight!',
+            text: 'We\'re experiencing heavy use right now. Hang tight!',
             icon: 'info',
             toast: true,
             timerProgressBar: true,
@@ -154,7 +167,7 @@ class App extends Component {
             timer: 5000 // set the duration of the toast notification to 5 seconds
           });
         }
-      }, 3000);
+      }, 4000);
     });
     //MESSAGE_COMPLETE
     this.socket.on('message_complete', async (data) => {
@@ -163,6 +176,31 @@ class App extends Component {
       await updateConversation(this);
       await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
+    });
+  }
+
+  async fetchLatestVersion() {
+    try {
+      const response = await fetch('/version.json');
+      const data = await response.json();
+      return data.version;
+    } catch (error) {
+      console.error('Error fetching latest version:', error);
+      return null;
+    }
+  }
+  
+  showUpdateAlert() {
+    this.MySwal.fire({
+      title: 'New version available',
+      text: 'A new version of the app is available. Please refresh the page to get the latest updates.',
+      icon: 'info',
+      confirmButtonText: 'Refresh',
+      showCancelButton: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.reload();
+      }
     });
   }
 
@@ -263,6 +301,7 @@ class App extends Component {
     const EnhanceButtons = (
       <button
         onClick={(e) => {
+          e.preventDefault();
           if (isLoading || incomingChatInProgress || !userMessage.messageInput) {
             this.MySwal.fire({
               title: 'Enhance Prompt',

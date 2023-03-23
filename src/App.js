@@ -166,7 +166,7 @@ class App extends Component {
             timer: 5000 // set the duration of the toast notification to 5 seconds
           });
         }
-      }, 3000);
+      }, 4000);
     });
     //MESSAGE_COMPLETE
     this.socket.on('message_complete', async (data) => {

@@ -139,7 +139,7 @@ class App extends Component {
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
-      console.log(this.messageManager.getMessagesSimple());
+      //console.log(this.messageManager.getMessagesSimple());
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
 

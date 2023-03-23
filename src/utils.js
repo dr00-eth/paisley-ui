@@ -283,13 +283,13 @@ export async function sendMessage(context, event) {
         await fetch(`${context.apiServerUrl}/api/gettokencount`, tokenChkReq)
             .then(async response => await response.json())
             .then(async (data) => {
-                if (data.tokencounts > 3250) {
+                if (data.tokencounts > 3000) {
                     console.log("pruning tokens");
-                    context.messageManager.checkThresholdAndMove(1);
+                    await context.messageManager.checkThresholdAndMove(context,data.tokencounts);
                     updateConversation(context);
-                    await context.setStateAsync({ messages: context.messageManager.messages, messagesTokenCount: data.tokencounts });
+                    await context.setStateAsync({ messagesTokenCount: data.tokencounts });
                 }
-                console.log(data.tokencounts);
+                console.log("before pruning",data.tokencounts);
             })
             .catch(error => console.error(error));
 
@@ -516,7 +516,7 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
         }
         const areaStatPrompt = areaStatsPrompts.join('\n');
 
-        await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
+        await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);
 
         await addMessage(context, "user", areaStatPrompt);
         await context.setStateAsync({ selectedListingAreaId: preferredAreaId });
@@ -557,7 +557,7 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
     //     }
     //     const areaStatPrompt = areaStatsPrompts.join('\n');
 
-    //     await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
+    //     await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);
 
     //     await addMessage(context, "user", areaStatPrompt);
     //     await context.setStateAsync({ selectedListingAreaId: areaId });

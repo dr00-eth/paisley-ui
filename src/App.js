@@ -145,13 +145,13 @@ class App extends Component {
         if (this.state.isWaitingForMessages) {
           this.MySwal.fire({
             title: 'Please be patient',
-            text: 'No messages have been received yet. Please wait a little longer.',
+            text: 'We\'re experiencing heavy use right now. Hang on tight!',
             icon: 'info',
             toast: true,
             timerProgressBar: true,
             position: 'bottom-end', // set the position of the toast notification
             showConfirmButton: false, // hide the confirmation button
-            timer: 3000 // set the duration of the toast notification to 5 seconds
+            timer: 5000 // set the duration of the toast notification to 5 seconds
           });
         }
       }, 3000);

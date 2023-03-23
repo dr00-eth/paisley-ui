@@ -26,31 +26,66 @@ class SmartMessageManager {
     return message.id;
   }
 
-  checkThresholdAndMove(thresholdHours) {
-    const threshold = thresholdHours * 60 * 60; // Convert hours to seconds
-    const now = Math.floor(Date.now() / 1000);
+  async getTokenCountForMessage(context, message) {
+    const tokenChkBody = {
+      messages: [{ role: message.role, content: message.content }],
+      model: context.state.gptModel,
+    };
   
-    // Find the oldest message matching the criteria
-    let oldestMessage = null;
-    this.messages.forEach((message) => {
-      if (now - message.timestamp > threshold && message.role === 'assistant' && !message.isFav) {
-        if (!oldestMessage || message.timestamp < oldestMessage.timestamp) {
-          oldestMessage = message;
+    const tokenChkReq = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tokenChkBody),
+    };
+  
+    const response = await fetch(`${context.apiServerUrl}/api/gettokencount`, tokenChkReq);
+    const data = await response.json();
+    return data.tokencounts;
+  }
+  
+  async checkThresholdAndMove(context, currentTokenCount) {
+    const maxTokenCount = 3000;
+    const pruneToTokenCount = 2500;
+  
+    if (currentTokenCount > maxTokenCount) {
+      // Prune messages until token count is below pruneToTokenCount
+      while (currentTokenCount > pruneToTokenCount) {
+        let oldestMessage = null;
+  
+        // Find the oldest message matching the criteria
+        for (const message of context.messageManager.messages) {
+          if (message.role === 'assistant' && !message.isFav) {
+            if (!oldestMessage || message.timestamp < oldestMessage.timestamp) {
+              oldestMessage = message;
+            }
+          }
+        }
+  
+        // If an oldest message is found, remove it from messages and add it to deletedMsgs
+        if (oldestMessage) {
+          const oldestMessageTokenCount = await this.getTokenCountForMessage(context, oldestMessage);
+          console.log("oldest message", oldestMessage);
+          context.messageManager.messages = context.messageManager.messages.filter((message) => message !== oldestMessage);
+          context.messageManager.deletedMsgs.push({
+            deletedOn: Math.floor(Date.now() / 1000),
+            role: oldestMessage.role,
+            content: oldestMessage.content,
+            originalTimestamp: oldestMessage.timestamp,
+          });
+          console.log("deleted msgs", context.messageManager.deletedMsgs);
+  
+          // Update the current token count
+          currentTokenCount -= oldestMessageTokenCount;
+        } else {
+          console.log("after pruning", currentTokenCount);
+          break;
         }
       }
-    });
-  
-    // If an oldest message is found, remove it from messages and add it to deletedMsgs
-    if (oldestMessage) {
-      this.messages = this.messages.filter((message) => message !== oldestMessage);
-      this.deletedMsgs.push({
-        deletedOn: Math.floor(Date.now() / 1000),
-        role: oldestMessage.role,
-        content: oldestMessage.content,
-        originalTimestamp: oldestMessage.timestamp,
-      });
+      context.setStateAsync({ messages: context.messageManager.messages });
     }
-  }  
+  }
+  
+  
 
   toggleFavorite(id) {
     this.messages = this.messages.map((message) => {

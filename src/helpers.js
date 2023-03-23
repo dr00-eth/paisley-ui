@@ -334,7 +334,7 @@ export const startMessage = () => {
             <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
             <p>To get started, simply type in your question or prompt in the chat bar on the bottom of your screen or select a Quick Action.</p>
             <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
-            <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+            <p>Need a little inspiration? Here are a few example prompts to get your creative juices flowing:</p>
             <ul>
                 <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
                 <li>"Paisley, can you generate Facebook copy for my new listing?"</li>

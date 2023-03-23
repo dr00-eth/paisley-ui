@@ -6,6 +6,3 @@ node increment-version.js
 
 # Add the updated version.json to the staged changes
 git add public/version.json
-
-# Run lint-staged for other files
-npx lint-staged

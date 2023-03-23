@@ -61,7 +61,7 @@ class SmartMessageManager {
     });
   }
 
-  getMessages() {
+  getMessagesSimple() {
     return this.messages.map(({ role, content }) => ({ role, content }));
   }
 

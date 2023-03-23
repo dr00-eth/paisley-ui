@@ -65,7 +65,7 @@ export function updateDisplayMessagesWithFavorites(context) {
 }
 
 export function messageExists(context, role, content) {
-    const messages = context.messageManager.getMessages();
+    const messages = context.messageManager.getMessagesSimple();
     return messages.some(message => message.role === role && message.content === content);
 }
 

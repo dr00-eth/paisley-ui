@@ -272,7 +272,7 @@ export async function sendMessage(context, event) {
         await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
 
         const tokenChkBody = {
-            messages: context.messageManager.getMessages(),
+            messages: context.messageManager.getMessagesSimple(),
             model: gptModel
         }
 

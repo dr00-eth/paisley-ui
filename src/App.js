@@ -105,6 +105,7 @@ class App extends Component {
   componentDidMount() {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
     window.addEventListener('appUpdateAvailable', this.handleUpdateAvailable);
+    this.updateInterval = setInterval(() => this.checkForUpdates(), 30000);
 
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
@@ -169,6 +170,14 @@ class App extends Component {
     });
   }
 
+  checkForUpdates() {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CHECK_FOR_UPDATES' });
+      console.log("checked updates")
+    }
+  }
+  
+
   showUpdateAlert() {
     this.MySwal.fire({
       title: 'New version available',
@@ -186,6 +195,7 @@ class App extends Component {
   componentWillUnmount() {
     this.socket.off('message', this.handleMessage);
     window.removeEventListener('appUpdateAvailable', this.handleUpdateAvailable);
+    clearInterval(this.updateInterval);
     this.socket.disconnect();
   }
 

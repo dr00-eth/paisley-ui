@@ -308,7 +308,7 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
                         const newUserMessage = { ...userMessage, messageInput: e.target.value };
                         await context.setStateAsync({ userMessage: newUserMessage });
                         const userMessagePrompt = option.customPrompt;
-                        const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+                        const assistantMessage = `When you say "${option.value}" I will produce a response following this definition`;
 
                         if (!messageExists(context, "user", userMessagePrompt)) {
                             await addMessage(context, "user", userMessagePrompt, true);

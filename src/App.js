@@ -47,7 +47,7 @@ class App extends Component {
     this.messageManager = new SmartMessageManager();
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
-      messages: this.messageManager.getMessages(),
+      messages: this.messageManager.messages,
       displayMessages: [],
       messageInput: '',
       userMessage: this.messageManager.userMessage,
@@ -138,7 +138,7 @@ class App extends Component {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
-      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
+      await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
   }

@@ -49,7 +49,7 @@ export async function assignMessageIdToDisplayMessage(context, content, messageI
 
 export function handleToggleFavorite(context, id) {
     context.messageManager.toggleFavorite(id);
-    context.setState({ messages: context.messageManager.getMessages() }, () => {
+    context.setState({ messages: context.messageManager.messages }, () => {
         updateDisplayMessagesWithFavorites(context);
     });
 }
@@ -332,7 +332,7 @@ export const startMessage = () => {
 
 function getSimplifiedState(context) {
     return {
-        messages: context.messageManager.getMessages(),
+        messages: context.messageManager.messages,
         displayMessages: context.state.displayMessages,
         context_id: context.state.context_id,
         agentProfileUserId: context.state.agentProfileUserId,
@@ -344,7 +344,8 @@ function getSimplifiedState(context) {
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
         listingAreas: context.state.listingAreas,
-        deletedMsgs: context.state.deletedMsgs
+        deletedMsgs: context.state.deletedMsgs,
+        currentConversation: context.state.currentConversation
     };
 }
 
@@ -395,6 +396,7 @@ export async function storeConversations(context, agentProfileUserId, conversati
 
 export async function createConversation(context, conversationName) {
     const { agentProfileUserId, conversations, conversationsList } = context.state;
+    const conversationCreated = Math.floor(Date.now() / 1000);
 
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
@@ -408,6 +410,8 @@ export async function createConversation(context, conversationName) {
     const newConversation = {
         id: uuidv4(),
         name: conversationName,
+        createdOn: conversationCreated,
+        lastUpdated: conversationCreated,
         state: simplifiedState
     }
 
@@ -435,7 +439,7 @@ export async function updateConversation(context) {
 
         // Update the existing conversation in the array using the map function
         const updatedConversations = conversations.map((c) =>
-            c.id === conversation.id ? { ...c, state: simplifiedState } : c
+            c.id === conversation.id ? { ...c, state: simplifiedState, lastUpdated: Math.floor(Date.now() / 1000) } : c
         );
 
         await storeConversations(context, agentProfileUserId, updatedConversations);
@@ -457,7 +461,7 @@ export async function fetchConversation(context, conversationId) {
         const { state } = conversation;
         context.messageManager.messages = state.messages;
         await context.setStateAsync({
-            messages: state.messages,
+            messages: context.messageManager.messages,
             displayMessages: state.displayMessages,
             context_id: state.context_id,
             agentProfileUserId: state.agentProfileUserId,
@@ -469,7 +473,8 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
             listingAreas: state.listingAreas,
-            deletedMsgs: context.state.deletedMsgs
+            deletedMsgs: state.deletedMsgs,
+            currentConversation: state.currentConversation
         });
     }
 }

@@ -108,8 +108,6 @@ class App extends Component {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
     this.updateInterval = setInterval(async () => {
       const latestVersion = await this.fetchLatestVersion();
-      console.log("latest ver response", latestVersion);
-      console.log("latest ver state", this.state.appVersion);
       if (latestVersion && this.state.appVersion !== latestVersion) {
         this.setState({ appVersion: latestVersion });
         this.showUpdateAlert();

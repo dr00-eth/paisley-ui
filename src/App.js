@@ -3,6 +3,8 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -45,6 +47,7 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.messageManager = new SmartMessageManager();
+    this.MySwal = withReactContent(Swal);
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
       messages: this.messageManager.messages,

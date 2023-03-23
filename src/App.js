@@ -50,6 +50,7 @@ class App extends Component {
     this.MySwal = withReactContent(Swal);
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
+      appVersion: '',
       messages: this.messageManager.messages,
       displayMessages: [],
       messageInput: '',
@@ -91,6 +92,7 @@ class App extends Component {
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
     this.alertTimeout = null;
+    this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
@@ -104,8 +106,13 @@ class App extends Component {
 
   componentDidMount() {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
-    window.addEventListener('appUpdateAvailable', this.handleUpdateAvailable);
-    this.updateInterval = setInterval(() => this.checkForUpdates(), 30000);
+    this.updateInterval = setInterval(async () => {
+      const latestVersion = await this.fetchLatestVersion();
+      if (latestVersion && this.state.appVersion !== latestVersion) {
+        this.setState({ appVersion: latestVersion });
+        this.showUpdateAlert();
+      }
+    }, 30000);
 
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
@@ -118,6 +125,7 @@ class App extends Component {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(async response => await response.json())
           .then(async (data) => {
+            await this.setStateAsync({appVersion: this.fetchLatestVersion()})
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }
@@ -170,10 +178,14 @@ class App extends Component {
     });
   }
 
-  checkForUpdates() {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'CHECK_FOR_UPDATES' });
-      console.log("checked updates")
+  async fetchLatestVersion() {
+    try {
+      const response = await fetch('/version.json');
+      const data = await response.json();
+      return data.version;
+    } catch (error) {
+      console.error('Error fetching latest version:', error);
+      return null;
     }
   }
   
@@ -193,8 +205,6 @@ class App extends Component {
 
   componentWillUnmount() {
     this.socket.off('message', this.handleMessage);
-    window.removeEventListener('appUpdateAvailable', this.handleUpdateAvailable);
-    clearInterval(this.updateInterval);
     this.socket.disconnect();
   }
 

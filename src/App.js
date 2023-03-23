@@ -103,6 +103,9 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
+    window.addEventListener('appUpdateAvailable', this.handleUpdateAvailable);
+
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
@@ -166,8 +169,23 @@ class App extends Component {
     });
   }
 
+  showUpdateAlert() {
+    this.MySwal.fire({
+      title: 'New version available',
+      text: 'A new version of the app is available. Please refresh the page to get the latest updates.',
+      icon: 'info',
+      confirmButtonText: 'Refresh',
+      showCancelButton: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.reload();
+      }
+    });
+  }
+
   componentWillUnmount() {
     this.socket.off('message', this.handleMessage);
+    window.removeEventListener('appUpdateAvailable', this.handleUpdateAvailable);
     this.socket.disconnect();
   }
 

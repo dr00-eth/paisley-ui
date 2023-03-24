@@ -106,6 +106,28 @@ export async function resetChat(context, event) {
     }
 }
 
+export async function resetConversation(context, event) {
+    event.preventDefault();
+    const { userMessage } = context.state;
+    showLoading(context);
+    const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+    try {
+        if (context.state.currentConversation !== '') {
+            await context.setStateAsync({
+                messages: context.messageManager.cleanMessages(),
+                userMessage: newUserMessage,
+                displayMessages: [],
+            });
+            console.log(context.messageManager.messages);
+            await updateConversation(context);
+        }
+        hideLoading(context);
+    } catch (error) {
+        console.error(error);
+        hideLoading(context);
+    }
+}
+
 export async function changeContext(context, event) {
     const { connection_id } = context.state;
     const newContextId = parseInt(event.target.value);
@@ -126,16 +148,19 @@ export async function changeContext(context, event) {
 }
 
 export function handleMessage(context, data) {
-    const displayMessages = context.state.displayMessages.slice();
+    const { displayMessages: oldDisplayMessages } = context.state;
+    const displayMessages = [...oldDisplayMessages];
     const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-    if (latestDisplayMsg && latestDisplayMsg.role === "assistant") {
+    const { message } = data;
+    
+    if (displayMessages.length > 0 && latestDisplayMsg.role === "assistant") {
         // Append incoming message to the latest assistant message
-        latestDisplayMsg.content += data.message;
+        latestDisplayMsg.content += message;
     } else {
         clearTimeout(context.alertTimeout);
         context.setState({ isWaitingForMessages: false });
         // Add a new assistant message with the incoming message
-        displayMessages.push({ role: "assistant", content: data.message, isFav: false });
+        displayMessages.push({ role: "assistant", content: message, isFav: false });
     }
     context.setState({ displayMessages: displayMessages });
 }
@@ -189,6 +214,7 @@ export async function userSelectedArea(context, event) {
 export async function userSelectedListingArea(context, event) {
     event.preventDefault();
     const selectedListingAreaId = event.target.value;
+    const isAreaChange = selectedListingAreaId === context.state.selectedListingAreaId;
 
     await context.setStateAsync({
         selectedListingAreaId,
@@ -198,7 +224,7 @@ export async function userSelectedListingArea(context, event) {
     await getAreaStatisticsPrompt(
         context,
         selectedListingAreaId,
-        context.state.selectedListingAreaId ? true : false
+        isAreaChange
     );
     generateAreaKit(context);
     hideLoading(context);
@@ -362,9 +388,14 @@ function getSimplifiedState(context) {
         selectedAreaName: context.state.selectedAreaName,
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
+        selectedProperty: context.state.selectedProperty,
+        foundProperties: context.state.foundProperties,
         listingAreas: context.state.listingAreas,
         deletedMsgs: context.state.deletedMsgs,
-        currentConversation: context.state.currentConversation
+        currentConversation: context.state.currentConversation,
+        isAddressSearchDisabled: context.state.isAddressSearchDisabled,
+        isUserAreaSelectDisabled: context.state.isUserAreaSelectDisabled,
+        isUserListingSelectDisabled: context.state.isUserListingSelectDisabled
     };
 }
 
@@ -491,9 +522,14 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaName: state.selectedAreaName,
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
+            selectedProperty: state.selectedProperty,
+            foundProperties: state.foundProperties,
             listingAreas: state.listingAreas,
             deletedMsgs: state.deletedMsgs,
-            currentConversation: state.currentConversation
+            currentConversation: state.currentConversation,
+            isAddressSearchDisabled: state.isAddressSearchDisabled,
+            isUserAreaSelectDisabled: state.isUserAreaSelectDisabled,
+            isUserListingSelectDisabled: state.isUserListingSelectDisabled,
         });
     }
 }

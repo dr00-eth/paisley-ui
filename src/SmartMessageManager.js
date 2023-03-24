@@ -64,7 +64,6 @@ class SmartMessageManager {
         // If an oldest message is found, remove it from messages and add it to deletedMsgs
         if (oldestMessage) {
           const oldestMessageTokenCount = await this.getTokenCountForMessage(context, oldestMessage);
-          console.log("oldest message", oldestMessage);
           context.messageManager.messages = context.messageManager.messages.filter((message) => message !== oldestMessage);
           context.messageManager.deletedMsgs.push({
             deletedOn: Math.floor(Date.now() / 1000),
@@ -72,12 +71,10 @@ class SmartMessageManager {
             content: oldestMessage.content,
             originalTimestamp: oldestMessage.timestamp,
           });
-          console.log("deleted msgs", context.messageManager.deletedMsgs);
   
           // Update the current token count
           currentTokenCount -= oldestMessageTokenCount;
         } else {
-          console.log("after pruning", currentTokenCount);
           break;
         }
       }
@@ -104,6 +101,12 @@ class SmartMessageManager {
     this.deletedMsgs = [];
     this.messages = [];
 
+    return this.messages;
+  }
+
+  cleanMessages() {
+    this.deletedMsgs = [];
+    this.messages = this.messages.filter((message) => message.isFav);
     return this.messages;
   }
 }

@@ -5,6 +5,7 @@ import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -14,6 +15,7 @@ import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
   FOLLOWUPMENUITEMS as followupMenuItems,
+  PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
 import SmartMessageManager from './SmartMessageManager';
 import {
@@ -21,7 +23,7 @@ import {
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  resetChat,
+  resetConversation,
   changeContext,
   handleMessage,
   userSelectedListing,
@@ -41,7 +43,13 @@ import {
   createButtons,
   startMessage
 } from './helpers';
-import { sendMessage, getAgentProfile } from './utils';
+import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
+
+class CustomRenderer extends Renderer {
+  link(href, title, text) {
+    return `<a href="${href}" target="_blank" title="${title}">${text}</a>`;
+  }
+}
 
 class App extends Component {
   constructor(props) {
@@ -60,10 +68,12 @@ class App extends Component {
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
       privateMode: searchParams.get('privateMode') ?? false,
+      debug: searchParams.get('debug') ?? false,
       gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
+      isAddressSearchDisabled: false,
       isLoading: false,
       isWaitingForMessages: false,
       showCopyNotification: {},
@@ -71,6 +81,10 @@ class App extends Component {
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
+      addressSearchString: '',
+      addressSuggestions: [],
+      foundProperties: [],
+      selectedProperty: [],
       agentName: '',
       agentProfileImage: '',
       listings: [],
@@ -126,7 +140,7 @@ class App extends Component {
           .then(async response => await response.json())
           .then(async (data) => {
             const latestVersion = await this.fetchLatestVersion();
-            await this.setStateAsync({appVersion: latestVersion})
+            await this.setStateAsync({ appVersion: latestVersion })
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }
@@ -143,13 +157,15 @@ class App extends Component {
     });
     //RECEIVE MESSAGE
     this.socket.on('message', (data) => {
-        handleMessage(this, data);
-      });
+      handleMessage(this, data);
+    });
     //ASK FOR MESSAGES
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
-      //console.log(this.messageManager.getMessagesSimple());
+      if (Boolean(this.state.debug) === true) {
+          console.log(callbackData.messages);
+      }
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
 
@@ -174,6 +190,9 @@ class App extends Component {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
+      if (Boolean(this.state.debug) === true) {
+        console.log(this.messageManager.messages);
+      }
       await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
@@ -189,7 +208,7 @@ class App extends Component {
       return null;
     }
   }
-  
+
   showUpdateAlert() {
     this.MySwal.fire({
       title: 'New version available',
@@ -242,7 +261,10 @@ class App extends Component {
       conversationsList,
       currentConversation,
       selectedListingMlsID,
-      selectedListingMlsNumber
+      selectedListingMlsNumber,
+      addressSearchString,
+      addressSuggestions,
+      isAddressSearchDisabled
     } = this.state;
 
     const swapVibeSection = (
@@ -322,9 +344,10 @@ class App extends Component {
     const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
     const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
     const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
-      const content = parse(msg.content, { renderer: new Renderer() });
+      const content = parse(msg.content, { renderer: new CustomRenderer() });
       return (
         <div
           key={index}
@@ -434,11 +457,38 @@ class App extends Component {
                   </select>
                 </div>
               )}
+              {context_id === 5 && agentProfileUserId && (
+                <div className='sidebar-section addressSearchBox'>
+                  <Autosuggest
+                    suggestions={addressSuggestions}
+                    onSuggestionsFetchRequested={(value) => onSuggestionsFetchRequested(value, this)}
+                    onSuggestionsClearRequested={() => onSuggestionsClearRequested(this)}
+                    getSuggestionValue={getSuggestionValue}
+                    renderSuggestion={(value) => renderSuggestion(value, this)}
+                    inputProps={{
+                      disabled: isAddressSearchDisabled,
+                      placeholder: 'Enter an address',
+                      value: addressSearchString,
+                      onChange: (event, { newValue }) => autoSuggestOnChange(event, { newValue }, this),
+                    }}
+                  />
+                  {listingAreas.length > 0 && (
+                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
+                      <option value="">-- Select Area --</option>
+                      {listingAreas.map((area) => (
+                        <option key={area.areaId} value={area.areaId}>
+                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
-            {((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='menu-buttons'>
                 {(() => {
                   if (context_id === 0) {
@@ -447,12 +497,14 @@ class App extends Component {
                     return areaButtons;
                   } else if (context_id === 3) {
                     return followupButtons;
+                  } else if (context_id === 5) {
+                    return prelistingButtons;
                   }
                 })()}
               </div>
             )}
 
-            {!((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {!((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='no-actions'>
                 No quick actions available
               </div>
@@ -568,7 +620,7 @@ class App extends Component {
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={async (e) => await resetChat(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button>
               </div>
             </form>
           </div>

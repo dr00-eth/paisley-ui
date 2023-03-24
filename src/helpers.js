@@ -106,6 +106,26 @@ export async function resetChat(context, event) {
     }
 }
 
+export async function resetConversation(context, event) {
+    event.preventDefault();
+    const { userMessage } = context.state;
+    showLoading(context);
+    const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+    try {
+        if (context.state.currentConversation !== '') {
+            await context.setStateAsync({
+                messages: context.messageManager.cleanMessages(),
+                userMessage: newUserMessage,
+                displayMessages: [],
+            });
+            console.log(context.messageManager.messages);
+            await updateConversation(context);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 export async function changeContext(context, event) {
     const { connection_id } = context.state;
     const newContextId = parseInt(event.target.value);
@@ -362,9 +382,14 @@ function getSimplifiedState(context) {
         selectedAreaName: context.state.selectedAreaName,
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
+        selectedProperty: context.state.selectedProperty,
+        foundProperties: context.state.foundProperties,
         listingAreas: context.state.listingAreas,
         deletedMsgs: context.state.deletedMsgs,
-        currentConversation: context.state.currentConversation
+        currentConversation: context.state.currentConversation,
+        isAddressSearchDisabled: context.state.isAddressSearchDisabled,
+        isUserAreaSelectDisabled: context.state.isUserAreaSelectDisabled,
+        isUserListingSelectDisabled: context.state.isUserListingSelectDisabled
     };
 }
 
@@ -491,9 +516,14 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaName: state.selectedAreaName,
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
+            selectedProperty: state.selectedProperty,
+            foundProperties: state.foundProperties,
             listingAreas: state.listingAreas,
             deletedMsgs: state.deletedMsgs,
-            currentConversation: state.currentConversation
+            currentConversation: state.currentConversation,
+            isAddressSearchDisabled: state.isAddressSearchDisabled,
+            isUserAreaSelectDisabled: state.isUserAreaSelectDisabled,
+            isUserListingSelectDisabled: state.isUserListingSelectDisabled,
         });
     }
 }

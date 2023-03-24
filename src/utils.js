@@ -96,7 +96,7 @@ export async function getListingAreas(context) {
         requestBody.propertyID = parseInt(selectedProperty.propertyID);
       }
       
-      if (context_id === 1 && selectedListingMlsID && selectedListingMlsNumber) {
+      if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
         requestBody.mlsID = selectedListingMlsID;
         requestBody.mlsNumber = selectedListingMlsNumber;
       }      
@@ -228,17 +228,13 @@ export function renderSuggestion(suggestion, context) {
 
 export async function userSelectedProperty(value, context) {
     const [fips, propertyID] = value.split('_');
-    console.log(context.state.foundProperties);
     const property = context.state.foundProperties.find(prop => prop.fips === fips && prop.propertyID === parseInt(propertyID));
-    console.log("property", property);
     if (property) {
         await context.setStateAsync({ selectedProperty: property, isAddressSearchDisabled: true });
         showLoading(context);
         await buildPropertyDescription(context);
         await createConversation(context, `${property.siteAddress}`);
         hideLoading(context);
-    } else {
-        console.log('Property not found');
     }
 };
 
@@ -439,12 +435,10 @@ export async function sendMessage(context, event) {
             .then(async response => await response.json())
             .then(async (data) => {
                 if (data.tokencounts > 3000) {
-                    console.log("pruning some tokens");
                     await context.messageManager.checkThresholdAndMove(context, data.tokencounts);
                     updateConversation(context);
                     await context.setStateAsync({ messagesTokenCount: data.tokencounts });
                 }
-                console.log("before pruning", data.tokencounts);
             })
             .catch(error => console.error(error));
 
@@ -573,14 +567,14 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
     if (!changeArea) {
-        await addMessage(context, "assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.");
+        await addMessage(context, "assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.", true);
 
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
 
     } else {
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
 
-        await addMessage(context, "assistant", "I'll use this area's info for future recommendations.");
+        await addMessage(context, "assistant", "I'll use this area's info for future recommendations.", true);
     }
     return areaName;
 }
@@ -629,11 +623,11 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 
     const assistantPrompt = "Do you have a specific MLS Listing for help today?";
 
-    await addMessage(context, "assistant", assistantPrompt);
+    await addMessage(context, "assistant", assistantPrompt, true);
 
     const listingPrompt = `New ${listingStatus} property at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
 
-    await addMessage(context, "user", listingPrompt);
+    await addMessage(context, "user", listingPrompt, true);
 
     await getListingAreas(context);
     if (preferredAreaId > 0) {
@@ -673,7 +667,7 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 
         await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);
 
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
         await context.setStateAsync({ selectedListingAreaId: preferredAreaId });
     }
     // else {
@@ -760,7 +754,7 @@ export async function buildPropertyDescription(context) {
 
         await addMessage(context, "assistant", "Do you have info about the property?", true);
 
-        await addMessage(context, "user", propertyPrompt);
+        await addMessage(context, "user", propertyPrompt, true);
     
     await getListingAreas(context);
 }

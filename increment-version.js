@@ -30,7 +30,5 @@ fs.readFile(versionFilePath, 'utf-8', (err, data) => {
       console.error('Error writing version.json:', err);
       return;
     }
-
-    console.log('Incremented version to:', versionData.version);
   });
 });

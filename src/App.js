@@ -24,6 +24,7 @@ import {
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
   resetChat,
+  resetConversation,
   changeContext,
   handleMessage,
   userSelectedListing,
@@ -62,6 +63,7 @@ class App extends Component {
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
       privateMode: searchParams.get('privateMode') ?? false,
+      debug: searchParams.get('debug') ?? false,
       gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
@@ -156,7 +158,9 @@ class App extends Component {
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
-      //console.log(this.messageManager.getMessagesSimple());
+      if (Boolean(this.state.debug) === true) {
+          console.log(callbackData.messages);
+      }
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
 
@@ -181,6 +185,9 @@ class App extends Component {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
+      if (Boolean(this.state.debug) === true) {
+        console.log(this.messageManager.messages);
+      }
       await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
@@ -476,7 +483,7 @@ class App extends Component {
           </div>
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
-            {((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='menu-buttons'>
                 {(() => {
                   if (context_id === 0) {
@@ -492,7 +499,7 @@ class App extends Component {
               </div>
             )}
 
-            {!((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {!((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='no-actions'>
                 No quick actions available
               </div>
@@ -608,7 +615,7 @@ class App extends Component {
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={async (e) => await resetChat(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button>
               </div>
             </form>
           </div>

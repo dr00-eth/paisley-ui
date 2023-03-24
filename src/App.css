@@ -587,6 +587,23 @@ button:focus {
   background-color: var(--primary-color);
   padding: 0.5rem;
   cursor: pointer;
+  width: 90%;
+}
+
+.addressSearchBox ul {
+  padding-inline-start: 20px;
+}
+
+.addressSearchBox select {
+  margin-left: 2rem;
+  width: 90%;
+}
+
+.react-autosuggest__container {
+  display: flex;
+  width: 100%;
+  margin-left: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* For tablet devices (between 768px and 1024px) */

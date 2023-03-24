@@ -168,7 +168,7 @@ export function renderSuggestion(suggestion, context) {
         if (data.success) {
             const properties = data.properties;
             if (properties.length === 1) {
-                await context.setStateAsync({ selectedProperty: properties[0] });
+                await context.setStateAsync({ selectedProperty: properties[0], isAddressSearchDisabled: true });
                 buildPropertyDescription(context);
             } else if (properties.length > 1) {
                 // Add properties to foundProperties state array
@@ -231,8 +231,10 @@ export async function userSelectedProperty(value, context) {
     const property = context.state.foundProperties.find(prop => prop.fips === fips && prop.propertyID === parseInt(propertyID));
     console.log("property", property);
     if (property) {
-        await context.setStateAsync({ selectedProperty: property });
+        await context.setStateAsync({ selectedProperty: property, isAddressSearchDisabled: true });
+        showLoading(context);
         await buildPropertyDescription(context);
+        hideLoading(context);
     } else {
         console.log('Property not found');
     }
@@ -717,7 +719,6 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 }
 
 export async function buildPropertyDescription(context) {
-    showLoading(context);
     const { selectedProperty } = context.state;
     const {
         ownerDisplayName,
@@ -760,6 +761,4 @@ export async function buildPropertyDescription(context) {
         await addMessage(context, "user", propertyPrompt);
     
     await getListingAreas(context);
-
-    hideLoading(context);
 }

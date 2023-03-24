@@ -65,6 +65,7 @@ class App extends Component {
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
+      isAddressSearchDisabled: false,
       isLoading: false,
       isWaitingForMessages: false,
       showCopyNotification: {},
@@ -249,7 +250,8 @@ class App extends Component {
       selectedListingMlsID,
       selectedListingMlsNumber,
       addressSearchString,
-      addressSuggestions
+      addressSuggestions,
+      isAddressSearchDisabled
     } = this.state;
 
     const swapVibeSection = (
@@ -450,6 +452,7 @@ class App extends Component {
                     getSuggestionValue={getSuggestionValue}
                     renderSuggestion={(value) => renderSuggestion(value, this)}
                     inputProps={{
+                      disabled: isAddressSearchDisabled,
                       placeholder: 'Enter an address',
                       value: addressSearchString,
                       onChange: (event, { newValue }) => autoSuggestOnChange(event, { newValue }, this),

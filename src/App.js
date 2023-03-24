@@ -15,6 +15,7 @@ import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
   FOLLOWUPMENUITEMS as followupMenuItems,
+  PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
 import SmartMessageManager from './SmartMessageManager';
 import {
@@ -331,6 +332,7 @@ class App extends Component {
     const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
     const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
     const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
       const content = parse(msg.content, { renderer: new Renderer() });
@@ -483,6 +485,8 @@ class App extends Component {
                     return areaButtons;
                   } else if (context_id === 3) {
                     return followupButtons;
+                  } else if (context_id === 5) {
+                    return prelistingButtons;
                   }
                 })()}
               </div>

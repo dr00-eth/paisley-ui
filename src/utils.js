@@ -169,7 +169,7 @@ export function renderSuggestion(suggestion, context) {
             const properties = data.properties;
             if (properties.length === 1) {
                 const isPropertyChange = properties[0] === context.state.selectedProperty;
-                await context.setStateAsync({ selectedProperty: properties[0], isAddressSearchDisabled: true });
+                await context.setStateAsync({ selectedProperty: properties[0] });
                 await buildPropertyDescription(context);
                 if (!isPropertyChange) {
                     await createConversation(context, `${properties[0].siteAddress}`);

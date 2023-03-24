@@ -750,7 +750,7 @@ export async function buildPropertyDescription(context) {
         })
     }
 
-    const propertyPrompt = propertyPrompts.join('\n');
+    const propertyPrompt = propertyPrompts.join('\n').trim();
 
         await addMessage(context, "assistant", "Do you have info about the property?", true);
 

@@ -579,6 +579,34 @@ button:focus {
   margin-left: 1rem;
 }
 
+.addressSearchBox li {
+  list-style-type: none;
+  color: white;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  background-color: var(--primary-color);
+  padding: 0.5rem;
+  cursor: pointer;
+  width: 90%;
+}
+
+.addressSearchBox ul {
+  padding-inline-start: 20px;
+}
+
+.addressSearchBox select {
+  margin-left: 2rem;
+  width: 90%;
+}
+
+.react-autosuggest__container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-left: 2rem;
+  margin-bottom: 1rem;
+}
+
 /* For tablet devices (between 768px and 1024px) */
 @media (min-width: 768px) and (max-width: 1024px) {
   .sidebar {

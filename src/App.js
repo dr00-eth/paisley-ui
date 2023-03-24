@@ -5,6 +5,7 @@ import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -41,7 +42,7 @@ import {
   createButtons,
   startMessage
 } from './helpers';
-import { sendMessage, getAgentProfile } from './utils';
+import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 
 class App extends Component {
   constructor(props) {
@@ -64,6 +65,7 @@ class App extends Component {
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
+      isAddressSearchDisabled: false,
       isLoading: false,
       isWaitingForMessages: false,
       showCopyNotification: {},
@@ -71,6 +73,10 @@ class App extends Component {
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
+      addressSearchString: '',
+      addressSuggestions: [],
+      foundProperties: [],
+      selectedProperty: [],
       agentName: '',
       agentProfileImage: '',
       listings: [],
@@ -126,7 +132,7 @@ class App extends Component {
           .then(async response => await response.json())
           .then(async (data) => {
             const latestVersion = await this.fetchLatestVersion();
-            await this.setStateAsync({appVersion: latestVersion})
+            await this.setStateAsync({ appVersion: latestVersion })
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }
@@ -143,8 +149,8 @@ class App extends Component {
     });
     //RECEIVE MESSAGE
     this.socket.on('message', (data) => {
-        handleMessage(this, data);
-      });
+      handleMessage(this, data);
+    });
     //ASK FOR MESSAGES
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
@@ -189,7 +195,7 @@ class App extends Component {
       return null;
     }
   }
-  
+
   showUpdateAlert() {
     this.MySwal.fire({
       title: 'New version available',
@@ -242,7 +248,10 @@ class App extends Component {
       conversationsList,
       currentConversation,
       selectedListingMlsID,
-      selectedListingMlsNumber
+      selectedListingMlsNumber,
+      addressSearchString,
+      addressSuggestions,
+      isAddressSearchDisabled
     } = this.state;
 
     const swapVibeSection = (
@@ -432,6 +441,33 @@ class App extends Component {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+              {context_id === 5 && agentProfileUserId && (
+                <div className='sidebar-section addressSearchBox'>
+                  <Autosuggest
+                    suggestions={addressSuggestions}
+                    onSuggestionsFetchRequested={(value) => onSuggestionsFetchRequested(value, this)}
+                    onSuggestionsClearRequested={() => onSuggestionsClearRequested(this)}
+                    getSuggestionValue={getSuggestionValue}
+                    renderSuggestion={(value) => renderSuggestion(value, this)}
+                    inputProps={{
+                      disabled: isAddressSearchDisabled,
+                      placeholder: 'Enter an address',
+                      value: addressSearchString,
+                      onChange: (event, { newValue }) => autoSuggestOnChange(event, { newValue }, this),
+                    }}
+                  />
+                  {listingAreas.length > 0 && (
+                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
+                      <option value="">-- Select Area --</option>
+                      {listingAreas.map((area) => (
+                        <option key={area.areaId} value={area.areaId}>
+                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
             </div>

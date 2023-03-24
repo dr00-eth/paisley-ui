@@ -34,7 +34,7 @@ export const FOLLOWUPMENUITEMS = [
 ];
 
 export const PRELISTINGMENUITEMS = [
-    { value: "Write Property Description", label: "Property Description", customPrompt: "Write a property description for the MLS based on the property information you were given. Afterwards ask me if there are any additional pieces of information to add or omit." },
+    { value: "Write Property Description", label: "Property Description", customPrompt: "Write a property description for the MLS based on the property information you were given. Do not use imagined information about the property or include last sales information. Afterwards you must ask me if there are any additional pieces of information to add or omit." },
     { value: "Coming Soon", label: "Coming Soon Package", customPrompt: "Create content for a coming soon package consisting of various pieces of content to market a property before it hits the MLS. Think step by step. In the package you'll create content for a flyer, Social ad, a blog post, and a text message to let home owners and home buyers know about an upcoming property for sale. Do not just list the items. Create the content for each section as well in a convesrational tone. Give your output in markdown format." },
     { value: "Write a letter to the seller", label: "Seller's Letter", customPrompt: "Draft a personalized letter to the seller of the property given. It should be professional, introduce me as a premier agent in the area, and give some background on my brokerage. Ask any questions you need from me to make it personalized." },
     { value: "Check Market Stats", label: "Market Stats", customPrompt: "Provide market statistics for the area given. Think step by step. Give your output in markdown format." },

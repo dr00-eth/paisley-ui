@@ -717,7 +717,10 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 export async function buildPropertyDescription(context) {
     const { selectedProperty } = context.state;
     const formatPrice = (price) => {
-        return `$${price.toLocaleString()}`;
+        if (price && price !== 0) {
+            return `$${price.toLocaleString()}`;
+        }
+        return 'unknown';
     };
     const {
         ownerDisplayName,
@@ -736,7 +739,7 @@ export async function buildPropertyDescription(context) {
         mlsProperties
     } = selectedProperty;
     const propertyPrompts = []
-    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${formatPrice(salePrice)}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached' : 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
+    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${formatPrice(salePrice ?? 0)}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached' : 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
 
     if (mlsProperties && mlsProperties.length > 0) {
         mlsProperties.map((listing) => {

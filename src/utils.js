@@ -169,7 +169,8 @@ export function renderSuggestion(suggestion, context) {
             const properties = data.properties;
             if (properties.length === 1) {
                 await context.setStateAsync({ selectedProperty: properties[0], isAddressSearchDisabled: true });
-                buildPropertyDescription(context);
+                await buildPropertyDescription(context);
+                await createConversation(context, `${properties[0].siteAddress}`);
             } else if (properties.length > 1) {
                 // Add properties to foundProperties state array
                 context.setState({
@@ -234,6 +235,7 @@ export async function userSelectedProperty(value, context) {
         await context.setStateAsync({ selectedProperty: property, isAddressSearchDisabled: true });
         showLoading(context);
         await buildPropertyDescription(context);
+        await createConversation(context, `${property.siteAddress}`);
         hideLoading(context);
     } else {
         console.log('Property not found');

@@ -244,7 +244,7 @@ export async function userSelectedProperty(value, context) {
         } else {
             await updateConversation(context);
         }
-        
+
         hideLoading(context);
     }
 };
@@ -355,6 +355,14 @@ function adjustVibe(context, userMessage) {
                 vibedMessage += '. Your writing style should be written professionally';
                 break;
 
+            case 'creative':
+                vibedMessage += '. Your writing style should be written creatively';
+                break;
+
+            case 'persuasive':
+                vibedMessage += '. Your writing style should be written persuasively';
+                break;
+
             default:
                 break;
         }
@@ -371,6 +379,14 @@ function adjustVibe(context, userMessage) {
 
             case '55plus':
                 vibedMessage += '. Your response should be targeted at the 55+ retirement community';
+                break;
+
+            case 'empty_nesters':
+                vibedMessage += '. Your response should be targeted at empty nesters looking to downsize.';
+                break;
+
+            case 'investor':
+                vibedMessage += '. Your response should be targeted at Real Estate Investors';
                 break;
 
             default:

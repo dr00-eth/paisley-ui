@@ -244,7 +244,7 @@ export async function userSelectedProperty(value, context) {
         } else {
             await updateConversation(context);
         }
-        
+
         hideLoading(context);
     }
 };
@@ -262,6 +262,30 @@ export function autoSuggestOnChange(event, { newValue }, context) {
     context.setState({ addressSearchString: newValue })
 }
 
+export function createShortUrl(context, url) {
+    const { agentProfileUserId, agentName } = context.state;
+    const shortUrlApi = `https://app.thegenie.ai/api/Data/GenerateShortUrl`;
+    const urlOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: url, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
+    };
+
+    return fetch(shortUrlApi, urlOptions)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                return data.url;
+            } else {
+                throw new Error('Failed to generate short URL');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            throw error;
+        });
+}
+
 export function generateAreaKit(context) {
     const { agentProfileUserId, selectedAreaId, selectedAreaName } = context.state;
     const requestOptions = {
@@ -274,14 +298,20 @@ export function generateAreaKit(context) {
         .then(data => {
             const collection = data.result.collection;
             const kitUrl = collection['collection-page'];
-            const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-            setTimeout(async () => {
-                await waitForIncomingChatToFinish(context);
-                const { displayMessages } = context.state;
-                const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: kitUrl });
-                updateConversation(context);
-            }, 30000);
+            createShortUrl(context, kitUrl)
+                .then(shortUrl => {
+                    const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+                    setTimeout(async () => {
+                        await waitForIncomingChatToFinish(context);
+                        const { displayMessages } = context.state;
+                        const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
+                        context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: shortUrl ?? kitUrl });
+                        updateConversation(context);
+                    }, 30000);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
         })
         .catch(error => {
             // handle error
@@ -301,20 +331,26 @@ export function generateListingKit(context) {
         .then(data => {
             const collection = data.result.collection;
             const kitUrl = collection['collection-page'];
-            const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-            setTimeout(async () => {
-                await waitForIncomingChatToFinish(context);
-                const { displayMessages } = context.state;
-                const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: kitUrl });
-                updateConversation(context);
-            }, 30000);
-
+            createShortUrl(context, kitUrl)
+                .then(shortUrl => {
+                    const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+                    setTimeout(async () => {
+                        await waitForIncomingChatToFinish(context);
+                        const { displayMessages } = context.state;
+                        const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
+                        context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: shortUrl ?? kitUrl });
+                        updateConversation(context);
+                    }, 30000);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
         })
         .catch(error => {
             // handle error
             console.error(error);
         });
+
 }
 
 function adjustVibe(context, userMessage) {
@@ -323,19 +359,19 @@ function adjustVibe(context, userMessage) {
     if (tone) {
         switch (tone) {
             case 'friendly':
-                vibedMessage += '. Your reply tone should be friendly';
+                vibedMessage += '. Make the tone friendly';
                 break;
 
             case 'conversational':
-                vibedMessage += '. Your reply tone should be conversational';
+                vibedMessage += '. Make the tone conversational';
                 break;
 
             case 'emotional':
-                vibedMessage += '. Your reply tone should be emotional';
+                vibedMessage += '. Make the tone emotional';
                 break;
 
             case 'to_the_point':
-                vibedMessage += '. Your reply tone should be straight and to the point';
+                vibedMessage += '. Get to the point quickly';
                 break;
             default:
                 break;
@@ -344,15 +380,23 @@ function adjustVibe(context, userMessage) {
     if (writingStyle) {
         switch (writingStyle) {
             case 'luxury':
-                vibedMessage += '. Your writing style should be smooth and focusing on luxury';
+                vibedMessage += '. Make it smooth and focus on luxury';
                 break;
 
             case 'straightforward':
-                vibedMessage += '. Your writing style should be straightforward and to the point';
+                vibedMessage += '. Make it straightforward';
                 break;
 
             case 'professional':
-                vibedMessage += '. Your writing style should be written professionally';
+                vibedMessage += '. Make it professional';
+                break;
+
+            case 'creative':
+                vibedMessage += '. Make it creative';
+                break;
+
+            case 'persuasive':
+                vibedMessage += '. Make it persuasive';
                 break;
 
             default:
@@ -362,15 +406,23 @@ function adjustVibe(context, userMessage) {
     if (targetAudience) {
         switch (targetAudience) {
             case 'first_time_home_buyers':
-                vibedMessage += '. Your response should be targeted to first time home buyers';
+                vibedMessage += '. Make it targeted to first time home buyers';
                 break;
 
             case 'sellers':
-                vibedMessage += '. Your response should be targeted to home sellers';
+                vibedMessage += '. Make it targeted to home sellers';
                 break;
 
             case '55plus':
-                vibedMessage += '. Your response should be targeted at the 55+ retirement community';
+                vibedMessage += '. Make it targeted at the 55+ retirement community';
+                break;
+
+            case 'empty_nesters':
+                vibedMessage += '. Make it targeted at empty nesters looking to downsize.';
+                break;
+
+            case 'investor':
+                vibedMessage += '. Make it targeted at Real Estate Investors';
                 break;
 
             default:

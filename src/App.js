@@ -275,6 +275,8 @@ class App extends Component {
             <option value="luxury">Luxury</option>
             <option value="straightforward">Straightforward</option>
             <option value="professional">Professional</option>
+            <option value="creative">Creative</option>
+            <option value="persuasive">Persuasive</option>
           </select>
         </div>
         <div>
@@ -292,6 +294,8 @@ class App extends Component {
             <option value="first_time_home_buyers">First-Time Home Buyers</option>
             <option value="sellers">Sellers</option>
             <option value="55plus">55+</option>
+            <option value="empty_nesters">Empty Nesters</option>
+            <option value="investor">Investor</option>
           </select>
         </div>
       </div>

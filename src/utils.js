@@ -735,7 +735,7 @@ export async function buildPropertyDescription(context) {
     const propertyPrompts = []
     propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${salePrice}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached': 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
     
-    if (mlsProperties.length > 0) {
+    if (mlsProperties && mlsProperties.length > 0) {
         mlsProperties.map((listing) => {
             const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket } = listing;
             const formatPrice = (price) => {

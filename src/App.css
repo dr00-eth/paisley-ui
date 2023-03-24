@@ -541,6 +541,15 @@ button {
   transition: 500ms;
 }
 
+#chat-input .button-group button {
+  background: linear-gradient(195deg, rgb(102, 187, 106), rgb(67, 160, 71));
+}
+
+#chat-input .button-group button:hover {
+  background: linear-gradient(160deg, rgb(102, 187, 106), rgb(67, 160, 71));
+  transition: background 2s ease-in;
+}
+
 .chat-area {
   display: flex;
   flex-grow: 1;

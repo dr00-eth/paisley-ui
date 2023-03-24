@@ -513,7 +513,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     if (!changeArea) {
         areaStatsPrompts.push(`Information for ${areaName} area:`);
     } else {
-        areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous information provided.`);
+        areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous area information provided (if any).`);
     }
 
     if (context.state.areaUserListings.length > 0) {

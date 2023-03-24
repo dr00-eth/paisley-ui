@@ -45,6 +45,12 @@ import {
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 
+class CustomRenderer extends Renderer {
+  link(href, title, text) {
+    return `<a href="${href}" target="_blank" title="${title}">${text}</a>`;
+  }
+}
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -341,7 +347,7 @@ class App extends Component {
     const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
-      const content = parse(msg.content, { renderer: new Renderer() });
+      const content = parse(msg.content, { renderer: new CustomRenderer() });
       return (
         <div
           key={index}

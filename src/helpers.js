@@ -209,6 +209,7 @@ export async function userSelectedArea(context, event) {
 export async function userSelectedListingArea(context, event) {
     event.preventDefault();
     const selectedListingAreaId = event.target.value;
+    const isAreaChange = selectedListingAreaId === context.state.selectedListingAreaId;
 
     await context.setStateAsync({
         selectedListingAreaId,
@@ -218,7 +219,7 @@ export async function userSelectedListingArea(context, event) {
     await getAreaStatisticsPrompt(
         context,
         selectedListingAreaId,
-        context.state.selectedListingAreaId ? true : false
+        isAreaChange
     );
     generateAreaKit(context);
     hideLoading(context);

@@ -168,9 +168,14 @@ export function renderSuggestion(suggestion, context) {
         if (data.success) {
             const properties = data.properties;
             if (properties.length === 1) {
+                const isPropertyChange = properties[0] === context.state.selectedProperty;
                 await context.setStateAsync({ selectedProperty: properties[0], isAddressSearchDisabled: true });
                 await buildPropertyDescription(context);
-                await createConversation(context, `${properties[0].siteAddress}`);
+                if (!isPropertyChange) {
+                    await createConversation(context, `${properties[0].siteAddress}`);
+                } else {
+                    await updateConversation(context);
+                }
             } else if (properties.length > 1) {
                 // Add properties to foundProperties state array
                 context.setState({
@@ -229,11 +234,17 @@ export function renderSuggestion(suggestion, context) {
 export async function userSelectedProperty(value, context) {
     const [fips, propertyID] = value.split('_');
     const property = context.state.foundProperties.find(prop => prop.fips === fips && prop.propertyID === parseInt(propertyID));
+    const isPropertyChange = property === context.state.selectedProperty;
     if (property) {
-        await context.setStateAsync({ selectedProperty: property, isAddressSearchDisabled: true });
+        await context.setStateAsync({ selectedProperty: property });
         showLoading(context);
         await buildPropertyDescription(context);
-        await createConversation(context, `${property.siteAddress}`);
+        if (!isPropertyChange) {
+            await createConversation(context, `${property.siteAddress}`);
+        } else {
+            await updateConversation(context);
+        }
+        
         hideLoading(context);
     }
 };

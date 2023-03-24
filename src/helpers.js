@@ -120,6 +120,7 @@ export async function resetConversation(context, event) {
             });
             console.log(context.messageManager.messages);
             await updateConversation(context);
+            hideLoading(context);
         }
     } catch (error) {
         console.error(error);

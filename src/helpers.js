@@ -148,16 +148,19 @@ export async function changeContext(context, event) {
 }
 
 export function handleMessage(context, data) {
-    const displayMessages = context.state.displayMessages.slice();
+    const { displayMessages: oldDisplayMessages } = context.state;
+    const displayMessages = [...oldDisplayMessages];
     const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-    if (latestDisplayMsg && latestDisplayMsg.role === "assistant") {
+    const { message } = data;
+    
+    if (displayMessages.length > 0 && latestDisplayMsg.role === "assistant") {
         // Append incoming message to the latest assistant message
-        latestDisplayMsg.content += data.message;
+        latestDisplayMsg.content += message;
     } else {
         clearTimeout(context.alertTimeout);
         context.setState({ isWaitingForMessages: false });
         // Add a new assistant message with the incoming message
-        displayMessages.push({ role: "assistant", content: data.message, isFav: false });
+        displayMessages.push({ role: "assistant", content: message, isFav: false });
     }
     context.setState({ displayMessages: displayMessages });
 }

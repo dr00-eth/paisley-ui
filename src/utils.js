@@ -89,17 +89,17 @@ export async function getListingAreas(context) {
     const requestBody = {
         aspNetUserId: agentProfileUserId,
         consumer: 0
-      };
-      
-      if (context_id === 5 && selectedProperty) {
+    };
+
+    if (context_id === 5 && selectedProperty) {
         requestBody.fips = selectedProperty.fips;
         requestBody.propertyID = parseInt(selectedProperty.propertyID);
-      }
-      
-      if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
+    }
+
+    if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
         requestBody.mlsID = selectedListingMlsID;
         requestBody.mlsNumber = selectedListingMlsNumber;
-      }      
+    }
 
     const requestOptions = {
         method: 'POST',
@@ -716,6 +716,9 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 
 export async function buildPropertyDescription(context) {
     const { selectedProperty } = context.state;
+    const formatPrice = (price) => {
+        return `$${price.toLocaleString()}`;
+    };
     const {
         ownerDisplayName,
         siteAddress,
@@ -733,17 +736,14 @@ export async function buildPropertyDescription(context) {
         mlsProperties
     } = selectedProperty;
     const propertyPrompts = []
-    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${salePrice}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached': 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
-    
+    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${formatPrice(salePrice)}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached' : 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
+
     if (mlsProperties && mlsProperties.length > 0) {
         mlsProperties.map((listing) => {
             const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket } = listing;
-            const formatPrice = (price) => {
-                return `$${price.toLocaleString()}`;
-            };
             const priceStr = priceHigh && priceHigh !== priceLow
-                    ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
-                    : `${formatPrice(priceLow)}`;
+                ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
+                : `${formatPrice(priceLow)}`;
             return propertyPrompts.push(
                 `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}
                 `);
@@ -752,9 +752,9 @@ export async function buildPropertyDescription(context) {
 
     const propertyPrompt = propertyPrompts.join('\n').trim();
 
-        await addMessage(context, "assistant", "Do you have info about the property?", true);
+    await addMessage(context, "assistant", "Do you have info about the property?", true);
 
-        await addMessage(context, "user", propertyPrompt, true);
-    
+    await addMessage(context, "user", propertyPrompt, true);
+
     await getListingAreas(context);
 }

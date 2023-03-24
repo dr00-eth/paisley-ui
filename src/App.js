@@ -23,7 +23,6 @@ import {
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  resetChat,
   resetConversation,
   changeContext,
   handleMessage,

@@ -527,6 +527,7 @@ class App extends Component {
               ))}
             </select>
           </div>
+          <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
@@ -548,6 +549,7 @@ class App extends Component {
               }
             })()}
           </div>
+          <hr></hr>
           {!this.state.isSwapVibeCollapsed && (
             <div className='swap-vibe-container'>
               {swapVibeSection}

@@ -323,19 +323,19 @@ function adjustVibe(context, userMessage) {
     if (tone) {
         switch (tone) {
             case 'friendly':
-                vibedMessage += '. Your reply tone should be friendly';
+                vibedMessage += '. Make the tone friendly';
                 break;
 
             case 'conversational':
-                vibedMessage += '. Your reply tone should be conversational';
+                vibedMessage += '. Make the tone conversational';
                 break;
 
             case 'emotional':
-                vibedMessage += '. Your reply tone should be emotional';
+                vibedMessage += '. Make the tone emotional';
                 break;
 
             case 'to_the_point':
-                vibedMessage += '. Your reply tone should be straight and to the point';
+                vibedMessage += '. Get to the point quickly';
                 break;
             default:
                 break;
@@ -344,23 +344,23 @@ function adjustVibe(context, userMessage) {
     if (writingStyle) {
         switch (writingStyle) {
             case 'luxury':
-                vibedMessage += '. Your writing style should be smooth and focusing on luxury';
+                vibedMessage += '. Make it smooth and focus on luxury';
                 break;
 
             case 'straightforward':
-                vibedMessage += '. Your writing style should be straightforward and to the point';
+                vibedMessage += '. Make it straightforward';
                 break;
 
             case 'professional':
-                vibedMessage += '. Your writing style should be written professionally';
+                vibedMessage += '. Make it professional';
                 break;
 
             case 'creative':
-                vibedMessage += '. Your writing style should be written creatively';
+                vibedMessage += '. Make it creative';
                 break;
 
             case 'persuasive':
-                vibedMessage += '. Your writing style should be written persuasively';
+                vibedMessage += '. Make it persuasive';
                 break;
 
             default:
@@ -370,23 +370,23 @@ function adjustVibe(context, userMessage) {
     if (targetAudience) {
         switch (targetAudience) {
             case 'first_time_home_buyers':
-                vibedMessage += '. Your response should be targeted to first time home buyers';
+                vibedMessage += '. Make it targeted to first time home buyers';
                 break;
 
             case 'sellers':
-                vibedMessage += '. Your response should be targeted to home sellers';
+                vibedMessage += '. Make it targeted to home sellers';
                 break;
 
             case '55plus':
-                vibedMessage += '. Your response should be targeted at the 55+ retirement community';
+                vibedMessage += '. Make it targeted at the 55+ retirement community';
                 break;
 
             case 'empty_nesters':
-                vibedMessage += '. Your response should be targeted at empty nesters looking to downsize.';
+                vibedMessage += '. Make it targeted at empty nesters looking to downsize.';
                 break;
 
             case 'investor':
-                vibedMessage += '. Your response should be targeted at Real Estate Investors';
+                vibedMessage += '. Make it targeted at Real Estate Investors';
                 break;
 
             default:

@@ -288,6 +288,13 @@ export function toggleSwapVibe(context, e) {
     }));
 };
 
+export function toggleSidebarCollapse(context, e) {
+    e.preventDefault();
+    context.setState((prevState) => ({
+        isMenuCollapsed: !prevState.isMenuCollapsed
+    }));
+}
+
 export function handleWritingStyleChange(context, e) {
     e.preventDefault();
     const newUserMessage = { ...context.state.userMessage, writingStyle: e.target.value };

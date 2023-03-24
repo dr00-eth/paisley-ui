@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
 import { contextItems } from './contexts';
@@ -31,6 +31,7 @@ import {
   userSelectedListingArea,
   handleEnhancePromptClick,
   toggleSwapVibe,
+  toggleSidebarCollapse,
   handleTargetAudienceChange,
   handleToneChange,
   handleWritingStyleChange,
@@ -101,6 +102,7 @@ class App extends Component {
       conversations: [],
       conversationsList: [],
       currentConversation: '',
+      isMenuCollapsed: false,
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -164,7 +166,7 @@ class App extends Component {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
       if (Boolean(this.state.debug) === true) {
-          console.log(callbackData.messages);
+        console.log(callbackData.messages);
       }
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
@@ -258,6 +260,7 @@ class App extends Component {
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
+      isMenuCollapsed,
       conversationsList,
       currentConversation,
       selectedListingMlsID,
@@ -387,11 +390,16 @@ class App extends Component {
     });
 
     return (
-      <div className="App">
+      <div className={`App ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div id="loading-container" style={{ display: isLoading ? 'flex' : 'none' }}>
           <p>Learning...</p>
         </div>
-        <div className="sidebar">
+        <div className={`sidebar ${isMenuCollapsed ? 'collapsed' : ''}`}>
+          <div className="hamburger-menu" onClick={(e) => 
+            toggleSidebarCollapse(this, e)
+          }>
+            <FontAwesomeIcon icon={faBars} size="lg" />
+          </div>
           <div className='sidebar-top'>
             <div className="sidebar-section">
               <img className='logo' alt='logo of thegenie real estate marketing system' src='/static/img/thegenie-logo-white.png' />
@@ -516,7 +524,7 @@ class App extends Component {
 
           </div>
         </div>
-        <div className='main-content'>
+        <div className={`main-content ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
           <div id="conversation-select">
             <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
               <option value="">-- Select Conversation --</option>

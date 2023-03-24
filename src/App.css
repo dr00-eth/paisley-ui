@@ -35,12 +35,16 @@ body.swal2-shown > [aria-hidden="true"] {
 
 .App {
   height: 100%;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  transition: grid-template-columns 1s ease;
+}
+
+.App.sidebar-collapsed {
+  grid-template-columns: 60px 100%;
 }
 
 .sidebar {
-  /* background-color: var(--secondary-color); */
   background: linear-gradient(195deg, rgb(50, 58, 84), rgb(26, 32, 53));
   width: 350px;
   display: flex;
@@ -51,8 +55,23 @@ body.swal2-shown > [aria-hidden="true"] {
   overflow-y: auto;
   border-radius: .75rem;
   border: none;
-  height: calc(100vh - 2rem);
+  /* height: calc(100vh - 2rem); */
   margin: 1rem;
+  transition: transform 0.5s ease;
+  position: relative;
+  height: calc(100% - 2rem);
+}
+
+.sidebar.collapsed {
+  transform: translateX(-335px);
+}
+
+.hamburger-menu {
+  position: absolute;
+  top: 1rem;
+  right: 0.5rem;
+  color: white;
+  cursor: pointer;
 }
 
 hr {
@@ -129,8 +148,15 @@ img.logo {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  flex-grow: 0;
+  transition: grid-column-start 0.5s ease, grid-column-end 0.5s ease, width 0.5s ease;
 }
 
+.main-content.sidebar-collapsed {
+  grid-column-start: 2;
+  grid-column-end: 2;
+  width: calc(100% - 100px);
+}
 
 header {
   background-color: var(--primary-color);

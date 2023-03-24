@@ -1,3 +1,4 @@
+import { showLoading, hideLoading } from './helpers';
 import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
 
 export async function getUserAreas(context) {
@@ -83,11 +84,27 @@ export async function getAreaUserListings(context, areaId) {
 }
 
 export async function getListingAreas(context) {
-    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber } = context.state;
+    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedProperty, context_id } = context.state;
+
+    const requestBody = {
+        aspNetUserId: agentProfileUserId,
+        consumer: 0
+      };
+      
+      if (context_id === 5 && selectedProperty) {
+        requestBody.fips = selectedProperty.fips;
+        requestBody.propertyID = parseInt(selectedProperty.propertyID);
+      }
+      
+      if (context_id === 1 && selectedListingMlsID && selectedListingMlsNumber) {
+        requestBody.mlsID = selectedListingMlsID;
+        requestBody.mlsNumber = selectedListingMlsNumber;
+      }      
+
     const requestOptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aspNetUserId: agentProfileUserId, mlsID: selectedListingMlsID, mlsNumber: selectedListingMlsNumber, consumer: 0 }),
+        body: JSON.stringify(requestBody),
     }
     await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
         .then(async response => await response.json())
@@ -101,6 +118,137 @@ export async function getListingAreas(context) {
             // handle error
             console.error(error);
         });
+}
+
+export async function getAddressSuggestions(context, address) {
+    const { agentProfileUserId } = context.state;
+    const requestOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: address, sessionToken: agentProfileUserId, consumer: 0 }),
+    }
+
+    const response = await fetch('https://app.thegenie.ai/api/Data/GetAddressPredictions', requestOptions)
+        .then(async response => await response.json()
+            .then(async (data) => {
+                if (data.success) {
+                    return data.predictions.map((prediction) => ({
+                        fullAddress: prediction.fullAddress,
+                        key: prediction.key
+                    }));
+                } else {
+                    return [];
+                }
+            })
+            .catch(error => {
+                console.log(error);
+            }));
+    return response;
+};
+
+export function getSuggestionValue(suggestion) {
+    return suggestion.fullAddress;
+};
+
+export function renderSuggestion(suggestion, context) {
+    async function handleSelect(id, context) {
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`,
+                'Content-Type': 'application/json',
+            },
+        };
+        showLoading(context);
+        const response = await fetch(
+            `https://app.thegenie.ai/api/Data/GetAssessorPropertiesDetail/${id}`,
+            requestOptions
+        );
+        const data = await response.json();
+        if (data.success) {
+            const properties = data.properties;
+            if (properties.length === 1) {
+                await context.setStateAsync({ selectedProperty: properties[0] });
+                buildPropertyDescription(context);
+            } else if (properties.length > 1) {
+                // Add properties to foundProperties state array
+                context.setState({
+                    foundProperties: properties,
+                });
+
+                const propertyButtons = properties.map((property) => {
+                    const buttonLabel = `${property.siteAddressHouseNumber} ${property.siteAddressStreetName
+                        }${property.siteAddressUnitNumber ? `, ${property.siteAddressUnitNumber}` : ''}`;
+                    return {
+                        label: buttonLabel,
+                        value: `${property.fips}_${property.propertyID}`,
+                    };
+                });
+
+                const swalHTML = (
+                    <div>
+                        {propertyButtons.map((button) => (
+                            <button
+                                key={button.value}
+                                value={button.value}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    await userSelectedProperty(button.value, context, properties);
+                                    context.MySwal.close();
+                                }}
+                            >
+                                {button.label}
+                            </button>
+                        ))}
+                    </div>
+                );
+
+                const swalOptions = {
+                    title: 'Select a property',
+                    html: swalHTML,
+                    showConfirmButton: false,
+                };
+
+                await context.MySwal.fire(swalOptions);
+            }
+        }
+        hideLoading(context);
+    }
+
+    return (
+        <div onClick={async (e) => {
+            e.preventDefault();
+            await handleSelect(suggestion.key, context);
+        }}>
+            {suggestion.fullAddress}
+        </div>
+    );
+}
+
+export async function userSelectedProperty(value, context) {
+    const [fips, propertyID] = value.split('_');
+    console.log(context.state.foundProperties);
+    const property = context.state.foundProperties.find(prop => prop.fips === fips && prop.propertyID === parseInt(propertyID));
+    console.log("property", property);
+    if (property) {
+        await context.setStateAsync({ selectedProperty: property });
+        await buildPropertyDescription(context);
+    } else {
+        console.log('Property not found');
+    }
+};
+
+export async function onSuggestionsFetchRequested({ value }, context) {
+    const addressSuggestions = await getAddressSuggestions(context, value);
+    await context.setStateAsync({ addressSuggestions });
+};
+
+export function onSuggestionsClearRequested(context) {
+    context.setState({ suggestions: [] });
+};
+
+export function autoSuggestOnChange(event, { newValue }, context) {
+    context.setState({ addressSearchString: newValue })
 }
 
 export function generateAreaKit(context) {
@@ -239,6 +387,9 @@ export async function sendMessage(context, event) {
             writingStyle: userMessage.writingStyle,
             targetAudience: userMessage.targetAudience
         }];
+        //We push this ASAP before hitting /api/chat to avoid appening GPT response to previous response
+        await context.setStateAsync({ displayMessages: updatedDisplayMessages });
+
         if (currentConversation !== '') {
             await updateConversation(context);
         } else {
@@ -285,16 +436,16 @@ export async function sendMessage(context, event) {
             .then(async (data) => {
                 if (data.tokencounts > 3000) {
                     console.log("pruning some tokens");
-                    await context.messageManager.checkThresholdAndMove(context,data.tokencounts);
+                    await context.messageManager.checkThresholdAndMove(context, data.tokencounts);
                     updateConversation(context);
                     await context.setStateAsync({ messagesTokenCount: data.tokencounts });
                 }
-                console.log("before pruning",data.tokencounts);
+                console.log("before pruning", data.tokencounts);
             })
             .catch(error => console.error(error));
 
         const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
-        await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
+        await context.setStateAsync({ userMessage: newUserMessage });
     }
 }
 
@@ -385,7 +536,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
             };
             const priceStr = listingStatus === "Sold"
                 ? `sold ${soldDate} for ${formatPrice(property.salePrice)}`
-                : (property.priceHigh
+                : (property.priceHigh && property.priceHigh !== property.priceLow
                     ? `listed ${listDate} for ${formatPrice(property.priceLow)} - ${formatPrice(property.priceHigh)}`
                     : `listed ${listDate} for ${formatPrice(property.priceLow)}`
                 );
@@ -466,7 +617,7 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
     };
     const priceStr = listingStatus === "Sold"
         ? `${formatPrice(listingInfo.salePrice)}`
-        : (listingInfo.highPrice
+        : (listingInfo.highPrice && listingInfo.highPrice !== listingInfo.lowPrice
             ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
             : `${formatPrice(listingInfo.lowPrice)}`
         );
@@ -563,4 +714,52 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
     //     await context.setStateAsync({ selectedListingAreaId: areaId });
     // }
     return listingAddress;
+}
+
+export async function buildPropertyDescription(context) {
+    showLoading(context);
+    const { selectedProperty } = context.state;
+    const {
+        ownerDisplayName,
+        siteAddress,
+        siteAddressCity,
+        siteAddressZip,
+        propertyType,
+        yearBuilt,
+        lotSqFt,
+        sumBuildingSqFt,
+        saleDate,
+        salePrice,
+        firstAmericanCurrentAVM,
+        bedrooms,
+        bathrooms,
+        mlsProperties
+    } = selectedProperty;
+    const propertyPrompts = []
+    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${salePrice}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached': 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
+    
+    if (mlsProperties.length > 0) {
+        mlsProperties.map((listing) => {
+            const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket } = listing;
+            const formatPrice = (price) => {
+                return `$${price.toLocaleString()}`;
+            };
+            const priceStr = priceHigh && priceHigh !== priceLow
+                    ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
+                    : `${formatPrice(priceLow)}`;
+            return propertyPrompts.push(
+                `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}
+                `);
+        })
+    }
+
+    const propertyPrompt = propertyPrompts.join('\n');
+
+        await addMessage(context, "assistant", "Do you have info about the property?", true);
+
+        await addMessage(context, "user", propertyPrompt);
+    
+    await getListingAreas(context);
+
+    hideLoading(context);
 }

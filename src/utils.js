@@ -1,3 +1,4 @@
+import { showLoading, hideLoading } from './helpers';
 import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
 
 export async function getUserAreas(context) {
@@ -13,7 +14,7 @@ export async function getUserAreas(context) {
             const areas = data.areas;
             areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
             // update state with fetched listings
-            context.setStateAsync({ areas });
+            await context.setStateAsync({ areas });
         })
         .catch(error => {
             // handle error
@@ -42,7 +43,7 @@ export async function getUserListings(context) {
             listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
 
             // update state with fetched listings
-            context.setStateAsync({ listings });
+            await context.setStateAsync({ listings });
         })
         .catch(error => {
             // handle error
@@ -83,11 +84,27 @@ export async function getAreaUserListings(context, areaId) {
 }
 
 export async function getListingAreas(context) {
-    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber } = context.state;
+    const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedProperty, context_id } = context.state;
+
+    const requestBody = {
+        aspNetUserId: agentProfileUserId,
+        consumer: 0
+    };
+
+    if (context_id === 5 && selectedProperty) {
+        requestBody.fips = selectedProperty.fips;
+        requestBody.propertyID = parseInt(selectedProperty.propertyID);
+    }
+
+    if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
+        requestBody.mlsID = selectedListingMlsID;
+        requestBody.mlsNumber = selectedListingMlsNumber;
+    }
+
     const requestOptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aspNetUserId: agentProfileUserId, mlsID: selectedListingMlsID, mlsNumber: selectedListingMlsNumber, consumer: 0 }),
+        body: JSON.stringify(requestBody),
     }
     await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
         .then(async response => await response.json())
@@ -103,6 +120,172 @@ export async function getListingAreas(context) {
         });
 }
 
+export async function getAddressSuggestions(context, address) {
+    const { agentProfileUserId } = context.state;
+    const requestOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: address, sessionToken: agentProfileUserId, consumer: 0 }),
+    }
+
+    const response = await fetch('https://app.thegenie.ai/api/Data/GetAddressPredictions', requestOptions)
+        .then(async response => await response.json()
+            .then(async (data) => {
+                if (data.success) {
+                    return data.predictions.map((prediction) => ({
+                        fullAddress: prediction.fullAddress,
+                        key: prediction.key
+                    }));
+                } else {
+                    return [];
+                }
+            })
+            .catch(error => {
+                console.log(error);
+            }));
+    return response;
+};
+
+export function getSuggestionValue(suggestion) {
+    return suggestion.fullAddress;
+};
+
+export function renderSuggestion(suggestion, context) {
+    async function handleSelect(id, context) {
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`,
+                'Content-Type': 'application/json',
+            },
+        };
+        showLoading(context);
+        const response = await fetch(
+            `https://app.thegenie.ai/api/Data/GetAssessorPropertiesDetail/${id}`,
+            requestOptions
+        );
+        const data = await response.json();
+        if (data.success) {
+            const properties = data.properties;
+            if (properties.length === 1) {
+                const isPropertyChange = properties[0] === context.state.selectedProperty;
+                await context.setStateAsync({ selectedProperty: properties[0] });
+                await buildPropertyDescription(context);
+                if (!isPropertyChange) {
+                    await createConversation(context, `${properties[0].siteAddress}`);
+                } else {
+                    await updateConversation(context);
+                }
+            } else if (properties.length > 1) {
+                // Add properties to foundProperties state array
+                context.setState({
+                    foundProperties: properties,
+                });
+
+                const propertyButtons = properties.map((property) => {
+                    const buttonLabel = `${property.siteAddressHouseNumber} ${property.siteAddressStreetName
+                        }${property.siteAddressUnitNumber ? `, ${property.siteAddressUnitNumber}` : ''}`;
+                    return {
+                        label: buttonLabel,
+                        value: `${property.fips}_${property.propertyID}`,
+                    };
+                });
+
+                const swalHTML = (
+                    <div>
+                        {propertyButtons.map((button) => (
+                            <button
+                                key={button.value}
+                                value={button.value}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    await userSelectedProperty(button.value, context, properties);
+                                    context.MySwal.close();
+                                }}
+                            >
+                                {button.label}
+                            </button>
+                        ))}
+                    </div>
+                );
+
+                const swalOptions = {
+                    title: 'Select a property',
+                    html: swalHTML,
+                    showConfirmButton: false,
+                };
+
+                await context.MySwal.fire(swalOptions);
+            }
+        }
+        hideLoading(context);
+    }
+
+    return (
+        <div onClick={async (e) => {
+            e.preventDefault();
+            await handleSelect(suggestion.key, context);
+        }}>
+            {suggestion.fullAddress}
+        </div>
+    );
+}
+
+export async function userSelectedProperty(value, context) {
+    const [fips, propertyID] = value.split('_');
+    const property = context.state.foundProperties.find(prop => prop.fips === fips && prop.propertyID === parseInt(propertyID));
+    const isPropertyChange = property === context.state.selectedProperty;
+    if (property) {
+        await context.setStateAsync({ selectedProperty: property });
+        showLoading(context);
+        await buildPropertyDescription(context);
+        if (!isPropertyChange) {
+            await createConversation(context, `${property.siteAddress}`);
+        } else {
+            await updateConversation(context);
+        }
+
+        hideLoading(context);
+    }
+};
+
+export async function onSuggestionsFetchRequested({ value }, context) {
+    const addressSuggestions = await getAddressSuggestions(context, value);
+    await context.setStateAsync({ addressSuggestions });
+};
+
+export function onSuggestionsClearRequested(context) {
+    context.setState({ suggestions: [] });
+};
+
+export function autoSuggestOnChange(event, { newValue }, context) {
+    context.setState({ addressSearchString: newValue })
+}
+
+export function createShortUrl(context, url) {
+    const { agentProfileUserId, agentName } = context.state;
+    const shortUrlApi = `https://app.thegenie.ai/api/Data/GenerateShortUrl`;
+    const urlOptions = {
+        method: 'POST',
+        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: url, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
+    };
+
+    return fetch(shortUrlApi, urlOptions)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                return data.url;
+            } else {
+                throw new Error('Failed to generate short URL');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            throw error;
+        });
+}
+
 export function generateAreaKit(context) {
     const { agentProfileUserId, selectedAreaId, selectedAreaName } = context.state;
     const requestOptions = {
@@ -115,14 +298,20 @@ export function generateAreaKit(context) {
         .then(data => {
             const collection = data.result.collection;
             const kitUrl = collection['collection-page'];
-            const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-            setTimeout(async () => {
-                await waitForIncomingChatToFinish(context);
-                const { displayMessages } = context.state;
-                const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: kitUrl });
-                updateConversation(context);
-            }, 30000);
+            createShortUrl(context, kitUrl)
+                .then(shortUrl => {
+                    const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+                    setTimeout(async () => {
+                        await waitForIncomingChatToFinish(context);
+                        const { displayMessages } = context.state;
+                        const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
+                        context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: shortUrl ?? kitUrl });
+                        updateConversation(context);
+                    }, 30000);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
         })
         .catch(error => {
             // handle error
@@ -142,20 +331,26 @@ export function generateListingKit(context) {
         .then(data => {
             const collection = data.result.collection;
             const kitUrl = collection['collection-page'];
-            const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`
-            setTimeout(async () => {
-                await waitForIncomingChatToFinish(context);
-                const { displayMessages } = context.state;
-                const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: kitUrl });
-                updateConversation(context);
-            }, 30000);
-
+            createShortUrl(context, kitUrl)
+                .then(shortUrl => {
+                    const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+                    setTimeout(async () => {
+                        await waitForIncomingChatToFinish(context);
+                        const { displayMessages } = context.state;
+                        const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
+                        context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: shortUrl ?? kitUrl });
+                        updateConversation(context);
+                    }, 30000);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
         })
         .catch(error => {
             // handle error
             console.error(error);
         });
+
 }
 
 function adjustVibe(context, userMessage) {
@@ -164,19 +359,19 @@ function adjustVibe(context, userMessage) {
     if (tone) {
         switch (tone) {
             case 'friendly':
-                vibedMessage += '. Your reply tone should be friendly';
+                vibedMessage += '. Make the tone friendly';
                 break;
 
             case 'conversational':
-                vibedMessage += '. Your reply tone should be conversational';
+                vibedMessage += '. Make the tone conversational';
                 break;
 
             case 'emotional':
-                vibedMessage += '. Your reply tone should be emotional';
+                vibedMessage += '. Make the tone emotional';
                 break;
 
             case 'to_the_point':
-                vibedMessage += '. Your reply tone should be straight and to the point';
+                vibedMessage += '. Get to the point quickly';
                 break;
             default:
                 break;
@@ -185,15 +380,23 @@ function adjustVibe(context, userMessage) {
     if (writingStyle) {
         switch (writingStyle) {
             case 'luxury':
-                vibedMessage += '. Your writing style should be smooth and focusing on luxury';
+                vibedMessage += '. Make it smooth and focus on luxury';
                 break;
 
             case 'straightforward':
-                vibedMessage += '. Your writing style should be straightforward and to the point';
+                vibedMessage += '. Make it straightforward';
                 break;
 
             case 'professional':
-                vibedMessage += '. Your writing style should be written professionally';
+                vibedMessage += '. Make it professional';
+                break;
+
+            case 'creative':
+                vibedMessage += '. Make it creative';
+                break;
+
+            case 'persuasive':
+                vibedMessage += '. Make it persuasive';
                 break;
 
             default:
@@ -203,15 +406,23 @@ function adjustVibe(context, userMessage) {
     if (targetAudience) {
         switch (targetAudience) {
             case 'first_time_home_buyers':
-                vibedMessage += '. Your response should be targeted to first time home buyers';
+                vibedMessage += '. Make it targeted to first time home buyers';
                 break;
 
             case 'sellers':
-                vibedMessage += '. Your response should be targeted to home sellers';
+                vibedMessage += '. Make it targeted to home sellers';
                 break;
 
             case '55plus':
-                vibedMessage += '. Your response should be targeted at the 55+ retirement community';
+                vibedMessage += '. Make it targeted at the 55+ retirement community';
+                break;
+
+            case 'empty_nesters':
+                vibedMessage += '. Make it targeted at empty nesters looking to downsize.';
+                break;
+
+            case 'investor':
+                vibedMessage += '. Make it targeted at Real Estate Investors';
                 break;
 
             default:
@@ -239,12 +450,15 @@ export async function sendMessage(context, event) {
             writingStyle: userMessage.writingStyle,
             targetAudience: userMessage.targetAudience
         }];
+        //We push this ASAP before hitting /api/chat to avoid appening GPT response to previous response
+        await context.setStateAsync({ displayMessages: updatedDisplayMessages });
+
         if (currentConversation !== '') {
             await updateConversation(context);
         } else {
-            await createConversation(context, userMessage.messageInput.slice(0,30));
+            await createConversation(context, userMessage.messageInput.slice(0, 30));
         }
-        
+
 
         const requestBody = {
             user_id: connection_id,
@@ -267,12 +481,10 @@ export async function sendMessage(context, event) {
                 }
             })
             .catch(error => console.error(error));
-        
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" }
-        await context.setStateAsync({ displayMessages: updatedDisplayMessages, userMessage: newUserMessage });
+
 
         const tokenChkBody = {
-            messages: context.messageManager.getMessages(),
+            messages: context.messageManager.getMessagesSimple(),
             model: gptModel
         }
 
@@ -285,23 +497,23 @@ export async function sendMessage(context, event) {
         await fetch(`${context.apiServerUrl}/api/gettokencount`, tokenChkReq)
             .then(async response => await response.json())
             .then(async (data) => {
-                if (data.tokencounts > 3250) {
-                    console.log("pruning tokens");
-                    context.messageManager.checkThresholdAndMove(1);
+                if (data.tokencounts > 3000) {
+                    await context.messageManager.checkThresholdAndMove(context, data.tokencounts);
                     updateConversation(context);
-                    await context.setStateAsync({ messages: context.messageManager.getMessages(), messagesTokenCount: data.tokencounts });
+                    await context.setStateAsync({ messagesTokenCount: data.tokencounts });
                 }
-                console.log(data.tokencounts);
             })
             .catch(error => console.error(error));
 
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+        await context.setStateAsync({ userMessage: newUserMessage });
     }
 }
 
 export async function addMessage(context, role, message, isFav = false) {
     try {
         context.messageManager.addMessage(role, message, isFav);
-        await context.setStateAsync({ messages: context.messageManager.getMessages() })
+        await context.setStateAsync({ messages: context.messageManager.messages })
     } catch (error) {
         console.error('Error in addMessage:', error);
     }
@@ -364,7 +576,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     if (!changeArea) {
         areaStatsPrompts.push(`Information for ${areaName} area:`);
     } else {
-        areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous information provided.`);
+        areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous area information provided (if any).`);
     }
 
     if (context.state.areaUserListings.length > 0) {
@@ -385,7 +597,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
             };
             const priceStr = listingStatus === "Sold"
                 ? `sold ${soldDate} for ${formatPrice(property.salePrice)}`
-                : (property.priceHigh
+                : (property.priceHigh && property.priceHigh !== property.priceLow
                     ? `listed ${listDate} for ${formatPrice(property.priceLow)} - ${formatPrice(property.priceHigh)}`
                     : `listed ${listDate} for ${formatPrice(property.priceLow)}`
                 );
@@ -418,14 +630,14 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
     if (!changeArea) {
-        await addMessage(context, "assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.");
+        await addMessage(context, "assistant", "Please provide the neighborhood, city, or zip code for the area you need marketing assistance with.", true);
 
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
 
     } else {
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
 
-        await addMessage(context, "assistant", "I'll use this area's info for future recommendations.");
+        await addMessage(context, "assistant", "I'll use this area's info for future recommendations.", true);
     }
     return areaName;
 }
@@ -466,7 +678,7 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
     };
     const priceStr = listingStatus === "Sold"
         ? `${formatPrice(listingInfo.salePrice)}`
-        : (listingInfo.highPrice
+        : (listingInfo.highPrice && listingInfo.highPrice !== listingInfo.lowPrice
             ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
             : `${formatPrice(listingInfo.lowPrice)}`
         );
@@ -474,11 +686,11 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
 
     const assistantPrompt = "Do you have a specific MLS Listing for help today?";
 
-    await addMessage(context, "assistant", assistantPrompt);
+    await addMessage(context, "assistant", assistantPrompt, true);
 
     const listingPrompt = `New ${listingStatus} property at ${listingAddress}: ${priceStr}, MLS: ${mlsNumber}, Virtual Tour: ${virtualTourUrl}, Beds: ${bedrooms}, Baths: ${totalBathrooms}, Type: ${propertyType}, City: ${city}, State: ${state}, Zip: ${zip}, Sq. Ft.: ${squareFeet}, Acres: ${acres}, Garage: ${garageSpaces}, Year Built: ${yearBuilt}, Agent: ${listingAgentName} (${listingBrokerName}), Status: ${listingStatus}, Features: ${featuresStr}, Details: ${remarks}. Note: Details don't change with status; don't use status info from that field.`;
 
-    await addMessage(context, "user", listingPrompt);
+    await addMessage(context, "user", listingPrompt, true);
 
     await getListingAreas(context);
     if (preferredAreaId > 0) {
@@ -516,9 +728,9 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
         }
         const areaStatPrompt = areaStatsPrompts.join('\n');
 
-        await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
+        await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);
 
-        await addMessage(context, "user", areaStatPrompt);
+        await addMessage(context, "user", areaStatPrompt, true);
         await context.setStateAsync({ selectedListingAreaId: preferredAreaId });
     }
     // else {
@@ -557,10 +769,58 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
     //     }
     //     const areaStatPrompt = areaStatsPrompts.join('\n');
 
-    //     await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?");
+    //     await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);
 
     //     await addMessage(context, "user", areaStatPrompt);
     //     await context.setStateAsync({ selectedListingAreaId: areaId });
     // }
     return listingAddress;
+}
+
+export async function buildPropertyDescription(context) {
+    const { selectedProperty } = context.state;
+    const formatPrice = (price) => {
+        if (price && price !== 0) {
+            return `$${price.toLocaleString()}`;
+        }
+        return 'unknown';
+    };
+    const {
+        ownerDisplayName,
+        siteAddress,
+        siteAddressCity,
+        siteAddressZip,
+        propertyType,
+        yearBuilt,
+        lotSqFt,
+        sumBuildingSqFt,
+        saleDate,
+        salePrice,
+        firstAmericanCurrentAVM,
+        bedrooms,
+        bathrooms,
+        mlsProperties
+    } = selectedProperty;
+    const propertyPrompts = []
+    propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${formatPrice(salePrice ?? 0)}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached' : 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
+
+    if (mlsProperties && mlsProperties.length > 0) {
+        mlsProperties.map((listing) => {
+            const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket } = listing;
+            const priceStr = priceHigh && priceHigh !== priceLow
+                ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
+                : `${formatPrice(priceLow)}`;
+            return propertyPrompts.push(
+                `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}
+                `);
+        })
+    }
+
+    const propertyPrompt = propertyPrompts.join('\n').trim();
+
+    await addMessage(context, "assistant", "Do you have info about the property?", true);
+
+    await addMessage(context, "user", propertyPrompt, true);
+
+    await getListingAreas(context);
 }

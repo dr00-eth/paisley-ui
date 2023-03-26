@@ -3,15 +3,19 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
-import {contextItems} from './contexts';
+import { contextItems } from './contexts';
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
   FOLLOWUPMENUITEMS as followupMenuItems,
+  PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
 import SmartMessageManager from './SmartMessageManager';
 import {
@@ -19,7 +23,7 @@ import {
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  resetChat,
+  resetConversation,
   changeContext,
   handleMessage,
   userSelectedListing,
@@ -39,15 +43,23 @@ import {
   createButtons,
   startMessage
 } from './helpers';
-import { sendMessage, getAgentProfile } from './utils';
+import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
+
+class CustomRenderer extends Renderer {
+  link(href, title, text) {
+    return `<a href="${href}" target="_blank" title="${title}">${text}</a>`;
+  }
+}
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.messageManager = new SmartMessageManager();
+    this.MySwal = withReactContent(Swal);
     const searchParams = new URLSearchParams(window.location.search);
     this.state = {
-      messages: this.messageManager.getMessages(),
+      appVersion: '',
+      messages: this.messageManager.messages,
       displayMessages: [],
       messageInput: '',
       userMessage: this.messageManager.userMessage,
@@ -56,16 +68,23 @@ class App extends Component {
       context_id: 0,
       agentProfileUserId: searchParams.get('agentProfileUserId') || '',
       privateMode: searchParams.get('privateMode') ?? false,
+      debug: searchParams.get('debug') ?? false,
       gptModel: searchParams.get('model') || 'gpt-3.5-turbo',
       isUserIdInputDisabled: searchParams.get('agentProfileUserId') ? true : false,
       isUserListingSelectDisabled: false,
       isUserAreaSelectDisabled: false,
+      isAddressSearchDisabled: false,
       isLoading: false,
+      isWaitingForMessages: false,
       showCopyNotification: {},
       selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
       selectedListingAreaId: '',
+      addressSearchString: '',
+      addressSuggestions: [],
+      foundProperties: [],
+      selectedProperty: [],
       agentName: '',
       agentProfileImage: '',
       listings: [],
@@ -86,6 +105,8 @@ class App extends Component {
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
+    this.alertTimeout = null;
+    this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
@@ -98,6 +119,15 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
+    this.updateInterval = setInterval(async () => {
+      const latestVersion = await this.fetchLatestVersion();
+      if (latestVersion && this.state.appVersion !== latestVersion) {
+        this.setState({ appVersion: latestVersion });
+        this.showUpdateAlert();
+      }
+    }, 30000);
+
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
       pingTimeout: 60000 //60 seconds
@@ -109,6 +139,8 @@ class App extends Component {
         fetch(`${this.apiServerUrl}/api/getmessages/${this.state.context_id}/${this.state.connection_id}`)
           .then(async response => await response.json())
           .then(async (data) => {
+            const latestVersion = await this.fetchLatestVersion();
+            await this.setStateAsync({ appVersion: latestVersion })
             for (const message of data) {
               this.messageManager.addMessage(message.role, message.content, true);
             }
@@ -123,23 +155,71 @@ class App extends Component {
           .catch(error => console.error(error));
       });
     });
-    //MESSAGE
-    this.socket.on('message', (data) => handleMessage(this, data));
-    //EMIT_EVENT
+    //RECEIVE MESSAGE
+    this.socket.on('message', (data) => {
+      handleMessage(this, data);
+    });
+    //ASK FOR MESSAGES
     this.socket.on('emit_msgs_event', (data) => {
       const callbackData = { ...data.callback_data };
-      callbackData.messages = this.messageManager.getMessages();
-      console.log(this.messageManager.getMessages());
+      callbackData.messages = this.messageManager.getMessagesSimple();
+      if (Boolean(this.state.debug) === true) {
+          console.log(callbackData.messages);
+      }
       this.socket.emit('callback_msgs_event', callbackData);
-      this.setState({ incomingChatInProgress: true });
+      this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
+
+      // set a timer to show an alert if no messages are received within 5 seconds
+      this.alertTimeout = setTimeout(() => {
+        if (this.state.isWaitingForMessages) {
+          this.MySwal.fire({
+            title: 'Please be patient',
+            text: 'We\'re experiencing heavy use right now. Hang tight!',
+            icon: 'info',
+            toast: true,
+            timerProgressBar: true,
+            position: 'bottom-end', // set the position of the toast notification
+            showConfirmButton: false, // hide the confirmation button
+            timer: 5000 // set the duration of the toast notification to 5 seconds
+          });
+        }
+      }, 4000);
     });
     //MESSAGE_COMPLETE
     this.socket.on('message_complete', async (data) => {
       const messageId = this.messageManager.addMessage("assistant", data.message);
       await assignMessageIdToDisplayMessage(this, data.message, messageId);
       await updateConversation(this);
-      await this.setStateAsync({ messages: this.messageManager.getMessages(), incomingChatInProgress: false });
+      if (Boolean(this.state.debug) === true) {
+        console.log(this.messageManager.messages);
+      }
+      await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
+    });
+  }
+
+  async fetchLatestVersion() {
+    try {
+      const response = await fetch('/version.json');
+      const data = await response.json();
+      return data.version;
+    } catch (error) {
+      console.error('Error fetching latest version:', error);
+      return null;
+    }
+  }
+
+  showUpdateAlert() {
+    this.MySwal.fire({
+      title: 'New version available',
+      text: 'A new version of the app is available. Please refresh the page to get the latest updates.',
+      icon: 'info',
+      confirmButtonText: 'Refresh',
+      showCancelButton: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.reload();
+      }
     });
   }
 
@@ -181,7 +261,10 @@ class App extends Component {
       conversationsList,
       currentConversation,
       selectedListingMlsID,
-      selectedListingMlsNumber
+      selectedListingMlsNumber,
+      addressSearchString,
+      addressSuggestions,
+      isAddressSearchDisabled
     } = this.state;
 
     const swapVibeSection = (
@@ -192,6 +275,8 @@ class App extends Component {
             <option value="luxury">Luxury</option>
             <option value="straightforward">Straightforward</option>
             <option value="professional">Professional</option>
+            <option value="creative">Creative</option>
+            <option value="persuasive">Persuasive</option>
           </select>
         </div>
         <div>
@@ -209,6 +294,8 @@ class App extends Component {
             <option value="first_time_home_buyers">First-Time Home Buyers</option>
             <option value="sellers">Sellers</option>
             <option value="55plus">55+</option>
+            <option value="empty_nesters">Empty Nesters</option>
+            <option value="investor">Investor</option>
           </select>
         </div>
       </div>
@@ -239,8 +326,20 @@ class App extends Component {
 
     const EnhanceButtons = (
       <button
-        onClick={(e) => handleEnhancePromptClick(this, e)}
-        disabled={isLoading || incomingChatInProgress || !userMessage.messageInput}
+        onClick={(e) => {
+          e.preventDefault();
+          if (isLoading || incomingChatInProgress || !userMessage.messageInput) {
+            this.MySwal.fire({
+              title: 'Enhance Prompt',
+              text: 'You must first type a prompt before you can enhance!',
+              icon: 'warning',
+              confirmButtonText: 'OK'
+            });
+          } else {
+            handleEnhancePromptClick(this, e)
+          }
+        }
+        }
       >
         Enhance Prompt
       </button>
@@ -249,9 +348,10 @@ class App extends Component {
     const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
     const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
     const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
-      const content = parse(msg.content, { renderer: new Renderer() });
+      const content = parse(msg.content, { renderer: new CustomRenderer() });
       return (
         <div
           key={index}
@@ -361,11 +461,38 @@ class App extends Component {
                   </select>
                 </div>
               )}
+              {context_id === 5 && agentProfileUserId && (
+                <div className='sidebar-section addressSearchBox'>
+                  <Autosuggest
+                    suggestions={addressSuggestions}
+                    onSuggestionsFetchRequested={(value) => onSuggestionsFetchRequested(value, this)}
+                    onSuggestionsClearRequested={() => onSuggestionsClearRequested(this)}
+                    getSuggestionValue={getSuggestionValue}
+                    renderSuggestion={(value) => renderSuggestion(value, this)}
+                    inputProps={{
+                      disabled: isAddressSearchDisabled,
+                      placeholder: 'Enter an address',
+                      value: addressSearchString,
+                      onChange: (event, { newValue }) => autoSuggestOnChange(event, { newValue }, this),
+                    }}
+                  />
+                  {listingAreas.length > 0 && (
+                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
+                      <option value="">-- Select Area --</option>
+                      {listingAreas.map((area) => (
+                        <option key={area.areaId} value={area.areaId}>
+                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="sidebar-section quick-actions">
             <h2 className='sidebar-subheading'>QUICK ACTIONS</h2>
-            {((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='menu-buttons'>
                 {(() => {
                   if (context_id === 0) {
@@ -374,12 +501,14 @@ class App extends Component {
                     return areaButtons;
                   } else if (context_id === 3) {
                     return followupButtons;
+                  } else if (context_id === 5) {
+                    return prelistingButtons;
                   }
                 })()}
               </div>
             )}
 
-            {!((context_id === 0) || (context_id === 1) || (context_id === 3)) && (
+            {!((context_id === 0) || (context_id === 1) || (context_id === 3) || (context_id === 5)) && (
               <div className='no-actions'>
                 No quick actions available
               </div>
@@ -403,6 +532,7 @@ class App extends Component {
               ))}
             </select>
           </div>
+          <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
@@ -424,6 +554,7 @@ class App extends Component {
               }
             })()}
           </div>
+          <hr></hr>
           {!this.state.isSwapVibeCollapsed && (
             <div className='swap-vibe-container'>
               {swapVibeSection}
@@ -438,7 +569,22 @@ class App extends Component {
             >
               {contextItems}
             </select>
-            <form onSubmit={async (e) => await sendMessage(this, e)}>
+            <form onSubmit={async (e) => {
+              if (e.target.value === '') {
+                this.MySwal.fire({
+                  title: 'Prompt',
+                  text: 'Type a prompt before trying to chat!',
+                  icon: 'warning',
+                  confirmButtonText: 'OK'
+                });
+              } else {
+                const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                await this.setStateAsync({ userMessage: newUserMessage });
+                await sendMessage(this, e);
+              }
+
+            }
+            }>
               <div className='chat-area'>
                 <textarea
                   value={userMessage.messageInput}
@@ -446,13 +592,24 @@ class App extends Component {
                   className="chat-input-textarea"
                   onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                    this.setStateAsync({ userMessage: newUserMessage })
+                    await this.setStateAsync({ userMessage: newUserMessage });
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      await sendMessage(this, e);
+                      if (e.target.value === '') {
+                        this.MySwal.fire({
+                          title: 'Prompt',
+                          text: 'Type a prompt before trying to chat!',
+                          icon: 'warning',
+                          confirmButtonText: 'OK'
+                        });
+                      } else {
+                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                        await this.setStateAsync({ userMessage: newUserMessage });
+                        await sendMessage(this, e);
+                      }
                     }
                   }}
                   placeholder="Enter your message..."
@@ -474,7 +631,7 @@ class App extends Component {
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
                 <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={async (e) => await resetChat(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button>
               </div>
             </form>
           </div>

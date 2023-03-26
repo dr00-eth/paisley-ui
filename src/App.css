@@ -15,7 +15,7 @@ html,
 body,
 #root {
   height: 100%;
-  font-family: "Rubik", sans-serif;
+  font-family: "roboto", sans-serif;
 }
 
 a {
@@ -28,23 +28,44 @@ body {
   background-color: var(--primary-color);
 }
 
+body.swal2-shown > [aria-hidden="true"] {
+  transition: 0.1s filter;
+  filter: blur(10px);
+}
+
 .App {
   height: 100%;
   display: flex;
   flex-direction: row;
 }
 
-/* Add styles for the sidebar */
 .sidebar {
-  background-color: var(--secondary-color);
+  /* background-color: var(--secondary-color); */
+  background: linear-gradient(195deg, rgb(50, 58, 84), rgb(26, 32, 53));
   width: 350px;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 75%) 0rem 1.25rem 1.6875rem 0rem;
   padding-right: 1rem;
   overflow-y: auto;
+  border-radius: .75rem;
+  border: none;
+  height: calc(100vh - 2rem);
+  margin: 1rem;
+}
+
+hr {
+  flex-shrink: 0;
+  border-top: 0px solid rgba(0, 0, 0, 0.12);
+  border-right: 0px solid rgba(0, 0, 0, 0.12);
+  border-left: 0px solid rgba(0, 0, 0, 0.12);
+  background-color: transparent;
+  height: 0.0625rem;
+  margin: 1rem 0px;
+  border-bottom: none;
+  opacity: 0.25;
+  background-image: linear-gradient(to right, rgba(52, 71, 103, 0), rgb(255, 255, 255), rgba(52, 71, 103, 0)) !important;
 }
 
 .sidebar-top {
@@ -255,7 +276,7 @@ header {
   padding: 15px;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
 }
 
 .chat-bubble.assistant.kit {
@@ -264,7 +285,7 @@ header {
 }
 
 .chat-bubble.assistant.favorite {
-  box-shadow: 5px 5px 5px 3px rgba(139,0,0,0.75);
+  box-shadow: rgb(139 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
   transition: box-shadow 2s ease-in-out;
 }
 
@@ -288,6 +309,7 @@ header {
 .message {
   margin: 5px 0;
   overflow-wrap: break-word;
+  padding-right: 6rem;
 }
 
 .message pre,
@@ -339,7 +361,7 @@ header {
   color: var(--text-color);
   width: 100px;
   background-color: var(--primary-color);
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
   border-top-left-radius: 10px px;
   animation: fade-in 2.5s;
 }
@@ -428,6 +450,7 @@ header {
   color: var(--accent-color);
 }
 
+
 .menu-buttons {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -465,11 +488,12 @@ textarea {
   font-size: 16px;
   border: 0;
   border-radius: 5px;
-  background-color: var(--primary-color);
+  /* background-color: var(--primary-color); */
+  background: linear-gradient(195deg, rgb(73, 163, 241), rgb(26, 115, 232));
   color: var(--text-color);
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
   margin-right: 10px;
-  font-family: "Rubik", sans-serif;
+  font-family: "roboto", sans-serif;
 }
 
 
@@ -498,9 +522,9 @@ input[type="text"] {
   border-radius: 5px;
   background-color: var(--primary-color);
   color: var(--text-color);
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
   margin-right: 10px;
-  font-family: "Rubik", sans-serif;
+  font-family: "roboto", sans-serif;
 }
 
 button {
@@ -511,10 +535,19 @@ button {
   margin: 10px;
   border: none;
   border-radius: 10px;
-  box-shadow: 5px 5px 5px 3px var(--shadow-color);
+  box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
   color: var(--text-color);
   font-size: 12px;
   transition: 500ms;
+}
+
+#chat-input .button-group button {
+  background: linear-gradient(195deg, rgb(102, 187, 106), rgb(67, 160, 71));
+}
+
+#chat-input .button-group button:hover {
+  background: linear-gradient(160deg, rgb(102, 187, 106), rgb(67, 160, 71));
+  transition: background 2s ease-in;
 }
 
 .chat-area {
@@ -568,8 +601,36 @@ button:focus {
   font-size: 1rem;
   display:
     inline-block;
-  font-family: "Rubik", sans-serif;
+  font-family: "roboto", sans-serif;
   margin-left: 1rem;
+}
+
+.addressSearchBox li {
+  list-style-type: none;
+  color: white;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  background-color: var(--primary-color);
+  padding: 0.5rem;
+  cursor: pointer;
+  width: 90%;
+}
+
+.addressSearchBox ul {
+  padding-inline-start: 20px;
+}
+
+.addressSearchBox select {
+  margin-left: 2rem;
+  width: 90%;
+}
+
+.react-autosuggest__container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-left: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* For tablet devices (between 768px and 1024px) */

@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import {
     generateListingKit,
     generateAreaKit,
@@ -44,12 +46,12 @@ export async function assignMessageIdToDisplayMessage(context, content, messageI
         }
         return msg;
     });
-    context.setStateAsync({ displayMessages: updatedDisplayMessages });
+    await context.setStateAsync({ displayMessages: updatedDisplayMessages });
 }
 
 export function handleToggleFavorite(context, id) {
     context.messageManager.toggleFavorite(id);
-    context.setState({ messages: context.messageManager.getMessages() }, () => {
+    context.setState({ messages: context.messageManager.messages }, () => {
         updateDisplayMessagesWithFavorites(context);
     });
 }
@@ -65,7 +67,7 @@ export function updateDisplayMessagesWithFavorites(context) {
 }
 
 export function messageExists(context, role, content) {
-    const messages = context.messageManager.getMessages();
+    const messages = context.messageManager.getMessagesSimple();
     return messages.some(message => message.role === role && message.content === content);
 }
 
@@ -104,6 +106,28 @@ export async function resetChat(context, event) {
     }
 }
 
+export async function resetConversation(context, event) {
+    event.preventDefault();
+    const { userMessage } = context.state;
+    showLoading(context);
+    const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+    try {
+        if (context.state.currentConversation !== '') {
+            await context.setStateAsync({
+                messages: context.messageManager.cleanMessages(),
+                userMessage: newUserMessage,
+                displayMessages: [],
+            });
+            console.log(context.messageManager.messages);
+            await updateConversation(context);
+        }
+        hideLoading(context);
+    } catch (error) {
+        console.error(error);
+        hideLoading(context);
+    }
+}
+
 export async function changeContext(context, event) {
     const { connection_id } = context.state;
     const newContextId = parseInt(event.target.value);
@@ -124,14 +148,19 @@ export async function changeContext(context, event) {
 }
 
 export function handleMessage(context, data) {
-    const displayMessages = context.state.displayMessages.slice();
+    const { displayMessages: oldDisplayMessages } = context.state;
+    const displayMessages = [...oldDisplayMessages];
     const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-    if (latestDisplayMsg && latestDisplayMsg.role === "assistant") {
+    const { message } = data;
+    
+    if (displayMessages.length > 0 && latestDisplayMsg.role === "assistant") {
         // Append incoming message to the latest assistant message
-        latestDisplayMsg.content += data.message;
+        latestDisplayMsg.content += message;
     } else {
+        clearTimeout(context.alertTimeout);
+        context.setState({ isWaitingForMessages: false });
         // Add a new assistant message with the incoming message
-        displayMessages.push({ role: "assistant", content: data.message, isFav: false });
+        displayMessages.push({ role: "assistant", content: message, isFav: false });
     }
     context.setState({ displayMessages: displayMessages });
 }
@@ -185,6 +214,7 @@ export async function userSelectedArea(context, event) {
 export async function userSelectedListingArea(context, event) {
     event.preventDefault();
     const selectedListingAreaId = event.target.value;
+    const isAreaChange = selectedListingAreaId === context.state.selectedListingAreaId;
 
     await context.setStateAsync({
         selectedListingAreaId,
@@ -194,7 +224,7 @@ export async function userSelectedListingArea(context, event) {
     await getAreaStatisticsPrompt(
         context,
         selectedListingAreaId,
-        context.state.selectedListingAreaId ? true : false
+        isAreaChange
     );
     generateAreaKit(context);
     hideLoading(context);
@@ -285,24 +315,39 @@ export function formatKey(str) {
 };
 
 export function createButtons(context, menuItems, userMessage, isLoading, incomingChatInProgress) {
+    const MySwal = withReactContent(Swal);
     return menuItems.map((option, index) => {
         return (
-            <button key={index} disabled={isLoading || incomingChatInProgress} value={option.value} onClick={async (e) => {
-                const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                context.setStateAsync({ userMessage: newUserMessage });
-                const userMessagePrompt = option.customPrompt;
-                const assistantMessage = `OK, when you say "${option.value}" I will produce my output in this format!`;
+            <button
+                key={index}
+                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) ? 'disabled' : ''}
+                value={option.value}
+                onClick={async (e) => {
+                    if (isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
+                        MySwal.fire({
+                            title: 'Quick Actions',
+                            text: `Please select a ${context.state.context_id === 0 ? 'listing' : 'area'} to use Quick Actions!`,
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
+                        await context.setStateAsync({ userMessage: newUserMessage });
+                        const userMessagePrompt = option.customPrompt;
+                        const assistantMessage = `When you say "${option.value}" I will produce a response following this definition`;
 
-                if (!messageExists(context, "user", userMessagePrompt)) {
-                    await addMessage(context, "user", userMessagePrompt, true);
-                }
+                        if (!messageExists(context, "user", userMessagePrompt)) {
+                            await addMessage(context, "user", userMessagePrompt, true);
+                        }
 
-                if (!messageExists(context, "assistant", assistantMessage)) {
-                    await addMessage(context, "assistant", assistantMessage, true);
-                }
+                        if (!messageExists(context, "assistant", assistantMessage)) {
+                            await addMessage(context, "assistant", assistantMessage, true);
+                        }
 
-                await sendMessage(context, e);
-            }}>
+                        await sendMessage(context, e);
+                    }
+
+                }}>
                 {option.label}
             </button>
         );
@@ -313,9 +358,9 @@ export const startMessage = () => {
     return (
         <div>
             <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
-            <p>To get started, simply type in your question or prompt in the chat bar on the bottom of your screen.</p>
+            <p>To get started, simply type in your question or prompt in the chat bar on the bottom of your screen or select a Quick Action.</p>
             <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
-            <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing:</p>
+            <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing: </p>
             <ul>
                 <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
                 <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
@@ -323,7 +368,7 @@ export const startMessage = () => {
                 <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
                 <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
             </ul>
-            <p>Don't forget, you can also use the menu on the left to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
+            <p>Don't forget, you can also use the menu below to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
             <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
             <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
         </div>
@@ -332,7 +377,7 @@ export const startMessage = () => {
 
 function getSimplifiedState(context) {
     return {
-        messages: context.messageManager.getMessages(),
+        messages: context.messageManager.messages,
         displayMessages: context.state.displayMessages,
         context_id: context.state.context_id,
         agentProfileUserId: context.state.agentProfileUserId,
@@ -343,8 +388,14 @@ function getSimplifiedState(context) {
         selectedAreaName: context.state.selectedAreaName,
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
+        selectedProperty: context.state.selectedProperty,
+        foundProperties: context.state.foundProperties,
         listingAreas: context.state.listingAreas,
-        deletedMsgs: context.state.deletedMsgs
+        deletedMsgs: context.state.deletedMsgs,
+        currentConversation: context.state.currentConversation,
+        isAddressSearchDisabled: context.state.isAddressSearchDisabled,
+        isUserAreaSelectDisabled: context.state.isUserAreaSelectDisabled,
+        isUserListingSelectDisabled: context.state.isUserListingSelectDisabled
     };
 }
 
@@ -395,6 +446,7 @@ export async function storeConversations(context, agentProfileUserId, conversati
 
 export async function createConversation(context, conversationName) {
     const { agentProfileUserId, conversations, conversationsList } = context.state;
+    const conversationCreated = Math.floor(Date.now() / 1000);
 
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
@@ -408,6 +460,8 @@ export async function createConversation(context, conversationName) {
     const newConversation = {
         id: uuidv4(),
         name: conversationName,
+        createdOn: conversationCreated,
+        lastUpdated: conversationCreated,
         state: simplifiedState
     }
 
@@ -435,7 +489,7 @@ export async function updateConversation(context) {
 
         // Update the existing conversation in the array using the map function
         const updatedConversations = conversations.map((c) =>
-            c.id === conversation.id ? { ...c, state: simplifiedState } : c
+            c.id === conversation.id ? { ...c, state: simplifiedState, lastUpdated: Math.floor(Date.now() / 1000) } : c
         );
 
         await storeConversations(context, agentProfileUserId, updatedConversations);
@@ -457,7 +511,7 @@ export async function fetchConversation(context, conversationId) {
         const { state } = conversation;
         context.messageManager.messages = state.messages;
         await context.setStateAsync({
-            messages: state.messages,
+            messages: context.messageManager.messages,
             displayMessages: state.displayMessages,
             context_id: state.context_id,
             agentProfileUserId: state.agentProfileUserId,
@@ -468,8 +522,14 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaName: state.selectedAreaName,
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
+            selectedProperty: state.selectedProperty,
+            foundProperties: state.foundProperties,
             listingAreas: state.listingAreas,
-            deletedMsgs: context.state.deletedMsgs
+            deletedMsgs: state.deletedMsgs,
+            currentConversation: state.currentConversation,
+            isAddressSearchDisabled: state.isAddressSearchDisabled,
+            isUserAreaSelectDisabled: state.isUserAreaSelectDisabled,
+            isUserListingSelectDisabled: state.isUserListingSelectDisabled,
         });
     }
 }

@@ -128,7 +128,7 @@ export async function resetConversation(context, event) {
 }
 
 export async function changeContext(context, event) {
-    const { connection_id } = context.state;
+    const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
     await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '' });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
@@ -141,6 +141,13 @@ export async function changeContext(context, event) {
                 showLoading(context);
                 await getAgentProfile(context);
                 hideLoading(context);
+            }
+            if (newContextId === 2 || newContextId === 3 || newContextId === 4) {
+                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: ''};
+                await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
+            }
+            if (newContextId === 5) {
+                await context.setStateAsync({ selectedListingAreaId: '' })
             }
         })
         .catch(error => console.error(error));

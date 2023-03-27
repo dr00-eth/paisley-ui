@@ -533,7 +533,8 @@ export async function getAgentProfile(context, event) {
     const agentInfo = await genieResults.json();
     const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
     const displayName = agentInfo.marketingSettings.profile.displayName ?? name;
-    const email = agentInfo.marketingSettings.profile.email ?? agentInfo.emailAddress;
+    const accountEmail = agentInfo.emailAddress;
+    const email = agentInfo.marketingSettings.profile.email ?? accountEmail;
     const phone = agentInfo.marketingSettings.profile.phone ?? agentInfo.phoneNumber;
     const website = agentInfo.marketingSettings.profile.websiteUrl ?? 'Not available';
     const licenseNumber = agentInfo.marketingSettings.profile.licenseNumber ?? 'Not available';
@@ -547,7 +548,7 @@ export async function getAgentProfile(context, event) {
     const agentPrompt = `Name: ${name}, display name: ${displayName} (use separate lines if different), email: ${email}, phone: ${phone}, website: ${website}, license: ${licenseNumber}, about: ${about}.`;
     await addMessage(context, "user", agentPrompt, true);
 
-    await context.setStateAsync({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage, agentEmail: email });
+    await context.setStateAsync({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage, accountEmail: accountEmail });
     await getUserListings(context);
     await getUserAreas(context);
 }

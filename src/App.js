@@ -88,7 +88,7 @@ class App extends Component {
       selectedProperty: [],
       agentName: '',
       agentProfileImage: '',
-      agentEmail: '',
+      accountEmail: '',
       listings: [],
       areas: [],
       areaUserListings: [],
@@ -548,7 +548,7 @@ class App extends Component {
             <Intercom
               appID="m7py7ex5"
               name={this.state.agentName}
-              email={this.state.agentEmail}
+              email={this.state.accountEmail}
               alignment="right"
               vertical_padding={20}
             />

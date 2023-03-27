@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart as faSolidHeart } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
 import { contextItems } from './contexts';
@@ -23,7 +23,6 @@ import {
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  resetConversation,
   changeContext,
   handleMessage,
   userSelectedListing,
@@ -31,6 +30,7 @@ import {
   userSelectedListingArea,
   handleEnhancePromptClick,
   toggleSwapVibe,
+  toggleSidebarCollapse,
   handleTargetAudienceChange,
   handleToneChange,
   handleWritingStyleChange,
@@ -47,7 +47,7 @@ import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestion
 
 class CustomRenderer extends Renderer {
   link(href, title, text) {
-    return `<a href="${href}" target="_blank" title="${title}">${text}</a>`;
+    return `<a href="${href}" target="_blank" title="AI Generated Link to Resource">${text}</a>`;
   }
 }
 
@@ -101,6 +101,7 @@ class App extends Component {
       conversations: [],
       conversationsList: [],
       currentConversation: '',
+      isMenuCollapsed: false,
     };
     this.chatDisplayRef = React.createRef();
     this.listingSelectRef = React.createRef();
@@ -108,7 +109,6 @@ class App extends Component {
     this.alertTimeout = null;
     this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
-    //this.workerUrl = 'http://127.0.0.1:8787/fetch'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
@@ -164,7 +164,7 @@ class App extends Component {
       const callbackData = { ...data.callback_data };
       callbackData.messages = this.messageManager.getMessagesSimple();
       if (Boolean(this.state.debug) === true) {
-          console.log(callbackData.messages);
+        console.log(callbackData.messages);
       }
       this.socket.emit('callback_msgs_event', callbackData);
       this.setState({ incomingChatInProgress: true, isWaitingForMessages: true });
@@ -258,6 +258,7 @@ class App extends Component {
       isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
+      isMenuCollapsed,
       conversationsList,
       currentConversation,
       selectedListingMlsID,
@@ -351,7 +352,13 @@ class App extends Component {
     const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
-      const content = parse(msg.content, { renderer: new CustomRenderer() });
+      let content = '';
+      try {
+        content = parse(msg.content, { renderer: new CustomRenderer() });  
+      } catch (error) {
+        console.error(error);
+      }
+      
       return (
         <div
           key={index}
@@ -387,11 +394,16 @@ class App extends Component {
     });
 
     return (
-      <div className="App">
+      <div className={`App ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div id="loading-container" style={{ display: isLoading ? 'flex' : 'none' }}>
           <p>Learning...</p>
         </div>
-        <div className="sidebar">
+        <div className={`sidebar ${isMenuCollapsed ? 'collapsed' : ''}`}>
+          <div className="hamburger-menu" onClick={(e) => 
+            toggleSidebarCollapse(this, e)
+          }>
+            <FontAwesomeIcon icon={faBars} size="lg" />
+          </div>
           <div className='sidebar-top'>
             <div className="sidebar-section">
               <img className='logo' alt='logo of thegenie real estate marketing system' src='/static/img/thegenie-logo-white.png' />
@@ -516,7 +528,7 @@ class App extends Component {
 
           </div>
         </div>
-        <div className='main-content'>
+        <div className={`main-content ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
           <div id="conversation-select">
             <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
               <option value="">-- Select Conversation --</option>
@@ -565,7 +577,7 @@ class App extends Component {
               {contextItems}
             </select>
             <form onSubmit={async (e) => {
-              if (e.target.value === '') {
+              if (userMessage.messageInput === '') {
                 this.MySwal.fire({
                   title: 'Prompt',
                   text: 'Type a prompt before trying to chat!',
@@ -573,8 +585,6 @@ class App extends Component {
                   confirmButtonText: 'OK'
                 });
               } else {
-                const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                await this.setStateAsync({ userMessage: newUserMessage });
                 await sendMessage(this, e);
               }
 
@@ -601,8 +611,6 @@ class App extends Component {
                           confirmButtonText: 'OK'
                         });
                       } else {
-                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                        await this.setStateAsync({ userMessage: newUserMessage });
                         await sendMessage(this, e);
                       }
                     }
@@ -624,9 +632,9 @@ class App extends Component {
               <div className='button-group'>
                 {EnhanceButtons}
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
-                <button
+                {/* <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button> */}
               </div>
             </form>
           </div>

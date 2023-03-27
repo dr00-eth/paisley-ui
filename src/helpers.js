@@ -154,22 +154,24 @@ export async function changeContext(context, event) {
 }
 
 export function handleMessage(context, data) {
-    const { displayMessages: oldDisplayMessages } = context.state;
-    const displayMessages = [...oldDisplayMessages];
     const { message } = data;
 
     if (message.trim() === '[START_OF_STREAM]') {
         clearTimeout(context.alertTimeout);
-        context.setState({ isWaitingForMessages: false });
-        displayMessages.push({ role: "assistant", content: '', isFav: false });
-
+        context.setState(prevState => {
+            const displayMessages = [...prevState.displayMessages];
+            displayMessages.push({ role: "assistant", content: '', isFav: false });
+            return { displayMessages, isWaitingForMessages: false };
+        });
     } else {
-        const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-        latestDisplayMsg.content += message;
+        context.setState(prevState => {
+            const displayMessages = [...prevState.displayMessages];
+            const latestDisplayMsg = displayMessages[displayMessages.length - 1];
+            latestDisplayMsg.content += message;
+            return { displayMessages };
+        });
     }
-    context.setState({ displayMessages: displayMessages });
 }
-
 
 export async function userSelectedListing(context, event) {
     event.preventDefault();

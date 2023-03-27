@@ -150,20 +150,20 @@ export async function changeContext(context, event) {
 export function handleMessage(context, data) {
     const { displayMessages: oldDisplayMessages } = context.state;
     const displayMessages = [...oldDisplayMessages];
-    const latestDisplayMsg = displayMessages[displayMessages.length - 1];
     const { message } = data;
-    
-    if (displayMessages.length > 0 && latestDisplayMsg.role === "assistant") {
-        // Append incoming message to the latest assistant message
-        latestDisplayMsg.content += message;
-    } else {
+
+    if (message.trim() === '[START_OF_STREAM]') {
         clearTimeout(context.alertTimeout);
         context.setState({ isWaitingForMessages: false });
-        // Add a new assistant message with the incoming message
-        displayMessages.push({ role: "assistant", content: message, isFav: false });
+        displayMessages.push({ role: "assistant", content: '', isFav: false });
+
+    } else {
+        const latestDisplayMsg = displayMessages[displayMessages.length - 1];
+        latestDisplayMsg.content += message;
     }
     context.setState({ displayMessages: displayMessages });
 }
+
 
 export async function userSelectedListing(context, event) {
     event.preventDefault();
@@ -267,14 +267,17 @@ async function getEnhancedPrompt(text) {
 export async function handleEnhancePromptClick(context, event) {
     event.preventDefault();
     const { userMessage } = context.state;
+    console.log(userMessage);
     if (userMessage.messageInput.trim() === "") return;
 
     try {
         showLoading(context);
         const enhancedMessage = await getEnhancedPrompt(userMessage.messageInput);
-        const newUserMessage = { ...userMessage, messageInput: enhancedMessage };
+        const newUserMessage = { ...userMessage, messageInput: enhancedMessage, isEnhanced: true };
+        context.textareaRef.current.value = enhancedMessage;
+        await context.setStateAsync({ userMessage: newUserMessage });
+        console.log(context.state.userMessage);
         hideLoading(context);
-        context.setState({ userMessage: newUserMessage });
     } catch (error) {
         hideLoading(context);
         console.error("Error enhancing message:", error);

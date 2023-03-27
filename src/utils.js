@@ -437,6 +437,7 @@ export async function sendMessage(context, event) {
     const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
 
     if (userMessage) {
+        console.log("send",userMessage);
         if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience) {
             userMessage.vibedMessage = adjustVibe(context, userMessage);
         }

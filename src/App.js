@@ -23,7 +23,6 @@ import {
   autoGrowTextarea,
   assignMessageIdToDisplayMessage,
   handleToggleFavorite,
-  resetConversation,
   changeContext,
   handleMessage,
   userSelectedListing,
@@ -110,9 +109,8 @@ class App extends Component {
     this.alertTimeout = null;
     this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
-    //this.workerUrl = 'http://127.0.0.1:8787/fetch'
-    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
-    //this.apiServerUrl = 'http://127.0.0.1:8008';
+    //this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
+    this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
     } else {
@@ -354,7 +352,13 @@ class App extends Component {
     const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
 
     const messages = displayMessages.map((msg, index) => {
-      const content = parse(msg.content, { renderer: new CustomRenderer() });
+      let content = '';
+      try {
+        content = parse(msg.content, { renderer: new CustomRenderer() });  
+      } catch (error) {
+        console.error(error);
+      }
+      
       return (
         <div
           key={index}
@@ -573,7 +577,7 @@ class App extends Component {
               {contextItems}
             </select>
             <form onSubmit={async (e) => {
-              if (e.target.value === '') {
+              if (userMessage.messageInput === '') {
                 this.MySwal.fire({
                   title: 'Prompt',
                   text: 'Type a prompt before trying to chat!',
@@ -581,8 +585,6 @@ class App extends Component {
                   confirmButtonText: 'OK'
                 });
               } else {
-                const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                await this.setStateAsync({ userMessage: newUserMessage });
                 await sendMessage(this, e);
               }
 
@@ -609,8 +611,6 @@ class App extends Component {
                           confirmButtonText: 'OK'
                         });
                       } else {
-                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                        await this.setStateAsync({ userMessage: newUserMessage });
                         await sendMessage(this, e);
                       }
                     }
@@ -632,9 +632,9 @@ class App extends Component {
               <div className='button-group'>
                 {EnhanceButtons}
                 <button onClick={(e) => toggleSwapVibe(this, e)}>Vibe</button>
-                <button
+                {/* <button
                   disabled={isLoading || incomingChatInProgress}
-                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button>
+                  onClick={async (e) => await resetConversation(this, e)}>Reset Chat</button> */}
               </div>
             </form>
           </div>

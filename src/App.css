@@ -795,6 +795,14 @@ button:focus {
     width: calc(50% - 5px);
   }
 
+  #chat-input button[type="submit"].send-button {
+    width: calc(20% - 5px);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-240px);
+}
+
   .menu-buttons {
     grid-template-columns: repeat(1, 1fr);
   }

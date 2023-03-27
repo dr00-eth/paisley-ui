@@ -452,12 +452,12 @@ export async function storeConversations(context, agentProfileUserId, conversati
 };
 
 export async function createConversation(context, conversationName) {
-    const { agentProfileUserId, conversations, conversationsList } = context.state;
+    const { agentProfileUserId, conversations, conversationsList, context_id } = context.state;
     const conversationCreated = Math.floor(Date.now() / 1000);
 
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
-    if (conversationSearch && conversationName !== '') {
+    if (conversationSearch && conversationName !== '' && (context_id === 0 || context_id === 1 || context_id === 5)) {
         context.setState({ currentConversation: conversationSearch.id });
         return fetchConversation(context, conversationSearch.id);
     }

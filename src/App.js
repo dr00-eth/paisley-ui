@@ -109,8 +109,8 @@ class App extends Component {
     this.alertTimeout = null;
     this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
-    //this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
-    this.apiServerUrl = 'http://127.0.0.1:8008';
+    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
+    //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
     } else {

@@ -547,7 +547,7 @@ export async function getAgentProfile(context, event) {
     const agentPrompt = `Name: ${name}, display name: ${displayName} (use separate lines if different), email: ${email}, phone: ${phone}, website: ${website}, license: ${licenseNumber}, about: ${about}.`;
     await addMessage(context, "user", agentPrompt, true);
 
-    await context.setStateAsync({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage })
+    await context.setStateAsync({ isUserIdInputDisabled: true, agentName: name, agentProfileImage: agentProfileImage, agentEmail: email });
     await getUserListings(context);
     await getUserAreas(context);
 }

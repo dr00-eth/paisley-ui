@@ -6,6 +6,7 @@ import TurndownService from 'turndown';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Autosuggest from 'react-autosuggest';
+import Intercom from 'react-intercom';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -87,6 +88,7 @@ class App extends Component {
       selectedProperty: [],
       agentName: '',
       agentProfileImage: '',
+      agentEmail: '',
       listings: [],
       areas: [],
       areaUserListings: [],
@@ -354,11 +356,11 @@ class App extends Component {
     const messages = displayMessages.map((msg, index) => {
       let content = '';
       try {
-        content = parse(msg.content, { renderer: new CustomRenderer() });  
+        content = parse(msg.content, { renderer: new CustomRenderer() });
       } catch (error) {
         console.error(error);
       }
-      
+
       return (
         <div
           key={index}
@@ -399,7 +401,7 @@ class App extends Component {
           <p>Learning...</p>
         </div>
         <div className={`sidebar ${isMenuCollapsed ? 'collapsed' : ''}`}>
-          <div className="hamburger-menu" onClick={(e) => 
+          <div className="hamburger-menu" onClick={(e) =>
             toggleSidebarCollapse(this, e)
           }>
             <FontAwesomeIcon icon={faBars} size="lg" />
@@ -531,13 +533,25 @@ class App extends Component {
         <div className={`main-content ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
           <div id="conversation-select">
             <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
-              <option value="">-- Select Conversation --</option>
+              <option value="">Conversation History</option>
+              {conversationsList.length === 0 && (
+                <option value=''>
+                  -- No Conversations --
+                </option>
+              )}
               {conversationsList.length > 0 && conversationsList.map((conversation, index) => (
                 <option key={index} value={conversation.id}>
                   {conversation.name}
                 </option>
               ))}
             </select>
+            <Intercom
+              appID="m7py7ex5"
+              name={this.state.agentName}
+              email={this.state.agentEmail}
+              alignment="right"
+              vertical_padding={20}
+            />
           </div>
           <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>

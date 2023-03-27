@@ -118,7 +118,6 @@ export async function resetConversation(context, event) {
                 userMessage: newUserMessage,
                 displayMessages: [],
             });
-            console.log(context.messageManager.messages);
             await updateConversation(context);
         }
         hideLoading(context);
@@ -267,7 +266,6 @@ async function getEnhancedPrompt(text) {
 export async function handleEnhancePromptClick(context, event) {
     event.preventDefault();
     const { userMessage } = context.state;
-    console.log(userMessage);
     if (userMessage.messageInput.trim() === "") return;
 
     try {
@@ -276,7 +274,6 @@ export async function handleEnhancePromptClick(context, event) {
         const newUserMessage = { ...userMessage, messageInput: enhancedMessage, isEnhanced: true };
         context.textareaRef.current.value = enhancedMessage;
         await context.setStateAsync({ userMessage: newUserMessage });
-        console.log(context.state.userMessage);
         hideLoading(context);
     } catch (error) {
         hideLoading(context);

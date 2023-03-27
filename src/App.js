@@ -47,7 +47,7 @@ import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestion
 
 class CustomRenderer extends Renderer {
   link(href, title, text) {
-    return `<a href="${href}" target="_blank" title="${title}">${text}</a>`;
+    return `<a href="${href}" target="_blank" title="AI Generated Link to Resource">${text}</a>`;
   }
 }
 

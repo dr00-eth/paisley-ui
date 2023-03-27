@@ -533,7 +533,12 @@ class App extends Component {
         <div className={`main-content ${isMenuCollapsed ? 'sidebar-collapsed' : ''}`}>
           <div id="conversation-select">
             <select ref={this.conversationSelectRef} value={currentConversation} className='Content-dropdown' disabled={incomingChatInProgress} onChange={(e) => userSelectedConversation(this, e)}>
-              <option value="">-- Select Conversation --</option>
+              <option value="">Conversation History</option>
+              {conversationsList.length === 0 && (
+                <option value=''>
+                  -- No Conversations --
+                </option>
+              )}
               {conversationsList.length > 0 && conversationsList.map((conversation, index) => (
                 <option key={index} value={conversation.id}>
                   {conversation.name}

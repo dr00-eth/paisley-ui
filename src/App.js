@@ -609,6 +609,13 @@ class App extends Component {
                   icon: 'warning',
                   confirmButtonText: 'OK'
                 });
+              } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0)) {
+                this.MySwal.fire({
+                  title: 'Prompt',
+                  text: `You must select a ${context_id === 0 ? 'Listing' : 'Area'} before chatting.`,
+                  icon: 'warning',
+                  confirmButtonText: 'OK'
+                });
               } else {
                 await sendMessage(this, e);
               }
@@ -632,6 +639,13 @@ class App extends Component {
                         this.MySwal.fire({
                           title: 'Prompt',
                           text: 'Type a prompt before trying to chat!',
+                          icon: 'warning',
+                          confirmButtonText: 'OK'
+                        });
+                      } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0)) {
+                        this.MySwal.fire({
+                          title: 'Prompt',
+                          text: `You must select a ${context_id === 0 ? 'Listing' : 'Area'} before chatting.`,
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });

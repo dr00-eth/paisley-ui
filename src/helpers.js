@@ -339,10 +339,17 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
                 className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) ? 'disabled' : ''}
                 value={option.value}
                 onClick={async (e) => {
-                    if (isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
+                    if (isLoading || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
                         MySwal.fire({
                             title: 'Quick Actions',
                             text: `Please select a ${context.state.context_id === 0 ? 'listing' : 'area'} to use Quick Actions!`,
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                    } else if (incomingChatInProgress) {
+                        MySwal.fire({
+                            title: 'Quick Actions',
+                            text: `Please wait until the current message is complete before selecting a new action.`,
                             icon: 'warning',
                             confirmButtonText: 'OK'
                         });

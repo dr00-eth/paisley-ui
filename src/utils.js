@@ -505,7 +505,7 @@ export async function sendMessage(context, event) {
             })
             .catch(error => console.error(error));
 
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "" };
         await context.setStateAsync({ userMessage: newUserMessage });
     }
 }
@@ -608,26 +608,38 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
         }
     }
 
-    for (const lookback of statistics) {
-
-        areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
-
-        for (const propLookback of lookback.propertyTypeStatistics) {
-            const propTypeDescription = propLookback.propertyTypeDescription;
-            const statistics = propLookback.statistics;
-
-            if (
-                statistics.soldPropertyTypeCount > 0 &&
-                (propTypeDescription === "Condo/Townhome" ||
-                    propTypeDescription === "Single Family Detached")
-            ) {
-                areaStatsPrompts.push(
-                    `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
-                );
-            }
+    statistics.forEach((lookback, index) => {
+        if (index === 0) {
+          areaStatsPrompts.push(
+            `${areaName} contains ${lookback.overallStatistics.taxrollCount} properties.`
+          );
         }
-
-    }
+      
+        areaStatsPrompts.push(
+          `In the past ${lookback.lookbackMonths} months there were ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`
+        );
+      
+        lookback.propertyTypeStatistics.forEach((propLookback) => {
+          const propTypeDescription = propLookback.propertyTypeDescription;
+          const statistics = propLookback.statistics;
+      
+          if (
+            statistics.soldPropertyTypeCount > 0 &&
+            (propTypeDescription === "Condo/Townhome" ||
+              propTypeDescription === "Single Family Detached")
+          ) {
+            if (index === 0) {
+              areaStatsPrompts.push(
+                `There are ${statistics.taxrollCount} ${propTypeDescription} homes.`
+              );
+            }
+            areaStatsPrompts.push(
+              `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
+            );
+          }
+        });
+      });
+      
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
     if (!changeArea) {
@@ -716,17 +728,23 @@ export async function getPropertyProfile(context, mlsId, mlsNumber) {
         const areaStatsPrompts = [];
         areaStatsPrompts.push(`This property exists in the ${areaName} neighborhood.`);
 
-        for (const lookback of statistics) {
-            areaStatsPrompts.push(`In the past ${lookback.lookbackMonths} months, ${lookback.overallStatistics.areaName} had ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`);
+        statistics.forEach((lookback, index) => {
+            if (index === 0) {
+                areaStatsPrompts.push(`${areaName} contains ${lookback.overallStatistics.taxrollCount} properties.`);
+            }
 
             const propTypeStats = lookback.propertyTypeStatistics.filter(statistic => statistic.propertyTypeId === propertyTypeId);
 
             if (propTypeStats.length > 0) {
                 const propTypeDescription = propTypeStats[0].propertyTypeDescription;
                 const statistics = propTypeStats[0].statistics;
+                if (index === 0) {
+                    areaStatsPrompts.push(`There are ${statistics.taxrollCount} ${propTypeDescription} homes.`)
+                }
                 areaStatsPrompts.push(`For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`);
             }
-        }
+        });
+
         const areaStatPrompt = areaStatsPrompts.join('\n');
 
         await addMessage(context, "assistant", "Do you have info about the area or neighborhood of this property?", true);

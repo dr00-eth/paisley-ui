@@ -42,7 +42,7 @@ import {
   showLoading,
   hideLoading,
   createButtons,
-  startMessage
+  startMessagev2
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 
@@ -198,6 +198,15 @@ class App extends Component {
       await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
+
+    if (!this.state.privateMode) {
+      // Load Hotjar tracking code
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.async = true;
+      script.src = `https://static.hotjar.com/c/hotjar-3409222.js?sv=6`;
+      document.head.appendChild(script);
+    }
   }
 
   async fetchLatestVersion() {
@@ -267,7 +276,8 @@ class App extends Component {
       selectedListingMlsNumber,
       addressSearchString,
       addressSuggestions,
-      isAddressSearchDisabled
+      isAddressSearchDisabled,
+      selectedProperty
     } = this.state;
 
     const swapVibeSection = (
@@ -441,10 +451,21 @@ class App extends Component {
                   )}
                 </div>
               </form>
+              <div className='sidebar-section context-group'>
+                <select
+                  id='context-select'
+                  className='Context-dropdown'
+                  onChange={(e) => changeContext(this, e)}
+                  value={context_id}
+                  disabled={isLoading || incomingChatInProgress}
+                >
+                  {contextItems}
+                </select>
+              </div>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
                   <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
-                    <option value="">-- Select Listing --</option>
+                    <option value="">Select Listing</option>
                     {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
                         {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
@@ -453,7 +474,7 @@ class App extends Component {
                   </select>
                   {listingAreas.length > 0 && (
                     <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
-                      <option value="">-- Select Area --</option>
+                      <option value="">Select Area</option>
                       {listingAreas.map((area) => (
                         <option key={area.areaId} value={area.areaId}>
                           {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
@@ -545,31 +566,24 @@ class App extends Component {
                 </option>
               ))}
             </select>
-            <Intercom
-              appID="m7py7ex5"
-              name={this.state.agentName}
-              email={this.state.accountEmail}
-              alignment="right"
-              vertical_padding={20}
-            />
+            {!(this.state.privateMode) && (
+              <Intercom
+                appID="m7py7ex5"
+                name={this.state.agentName}
+                email={this.state.accountEmail}
+                alignment="right"
+                vertical_padding={20}
+              />
+            )}
           </div>
           <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
-                if (context_id === 0) {
-                  return startMessage();
-                } else if (context_id === 1) {
-                  return areas.length > 0
-                    ? startMessage()
-                    : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
-                } else if (context_id === 2) {
-                  return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";
-                } else if (context_id === 3) {
-                  return "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!";
-                } else if (context_id === 4) {
-                  return "Hi, I'm Paisley - in this context you can ask me anything you would like. I am not trained on any particular information and can answer questions about any topic."
-                }
+                return startMessagev2(context_id, (e) => {
+                  e.preventDefault();
+                  changeContext(this, e);
+                });
               } else {
                 return messages;
               }
@@ -582,19 +596,18 @@ class App extends Component {
             </div>
           )}
           <div id="chat-input">
-            <select
-              className='Context-dropdown'
-              onChange={(e) => changeContext(this, e)}
-              value={context_id}
-              disabled={isLoading || incomingChatInProgress}
-            >
-              {contextItems}
-            </select>
             <form onSubmit={async (e) => {
               if (userMessage.messageInput === '') {
                 this.MySwal.fire({
                   title: 'Prompt',
                   text: 'Type a prompt before trying to chat!',
+                  icon: 'warning',
+                  confirmButtonText: 'OK'
+                });
+              } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
+                this.MySwal.fire({
+                  title: 'Prompt',
+                  text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                   icon: 'warning',
                   confirmButtonText: 'OK'
                 });
@@ -621,6 +634,13 @@ class App extends Component {
                         this.MySwal.fire({
                           title: 'Prompt',
                           text: 'Type a prompt before trying to chat!',
+                          icon: 'warning',
+                          confirmButtonText: 'OK'
+                        });
+                      } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
+                        this.MySwal.fire({
+                          title: 'Prompt',
+                          text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });

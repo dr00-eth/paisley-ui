@@ -42,8 +42,7 @@ import {
   showLoading,
   hideLoading,
   createButtons,
-  startMessagev2,
-  startMessage
+  startMessagev2
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 

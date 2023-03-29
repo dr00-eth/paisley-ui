@@ -42,6 +42,7 @@ import {
   showLoading,
   hideLoading,
   createButtons,
+  startMessagev2,
   startMessage
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
@@ -452,15 +453,15 @@ class App extends Component {
                 </div>
               </form>
               <div className='sidebar-section context-group'>
-              <select
-                id='context-select'
-                className='Context-dropdown'
-                onChange={(e) => changeContext(this, e)}
-                value={context_id}
-                disabled={isLoading || incomingChatInProgress}
-              >
-                {contextItems}
-              </select>
+                <select
+                  id='context-select'
+                  className='Context-dropdown'
+                  onChange={(e) => changeContext(this, e)}
+                  value={context_id}
+                  disabled={isLoading || incomingChatInProgress}
+                >
+                  {contextItems}
+                </select>
               </div>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
@@ -580,19 +581,10 @@ class App extends Component {
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
-                if (context_id === 0) {
-                  return startMessage();
-                } else if (context_id === 1) {
-                  return areas.length > 0
-                    ? startMessage()
-                    : "Hi, I'm Paisley! It looks like you haven't saved any areas in TheGenie yet. Please reach out to your Title Partner who shared the link with you to save areas for me to use.";
-                } else if (context_id === 2) {
-                  return "Hi, I'm Coach Paisley. Feel free to ask about anything real estate related!";
-                } else if (context_id === 3) {
-                  return "Hi, I'm The Ultimate Real Estate Follow Up Helper. I'm here to help you gameplan your marketing efforts and stay organized!";
-                } else if (context_id === 4) {
-                  return "Hi, I'm Paisley - in this context you can ask me anything you would like. I am not trained on any particular information and can answer questions about any topic."
-                }
+                return startMessagev2(context_id, (e) => {
+                  e.preventDefault();
+                  changeContext(this, e);
+                });
               } else {
                 return messages;
               }

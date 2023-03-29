@@ -276,7 +276,8 @@ class App extends Component {
       selectedListingMlsNumber,
       addressSearchString,
       addressSuggestions,
-      isAddressSearchDisabled
+      isAddressSearchDisabled,
+      selectedProperty
     } = this.state;
 
     const swapVibeSection = (
@@ -609,10 +610,10 @@ class App extends Component {
                   icon: 'warning',
                   confirmButtonText: 'OK'
                 });
-              } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0)) {
+              } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
                 this.MySwal.fire({
                   title: 'Prompt',
-                  text: `You must select a ${context_id === 0 ? 'Listing' : 'Area'} before chatting.`,
+                  text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                   icon: 'warning',
                   confirmButtonText: 'OK'
                 });
@@ -642,10 +643,10 @@ class App extends Component {
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });
-                      } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0)) {
+                      } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
                         this.MySwal.fire({
                           title: 'Prompt',
-                          text: `You must select a ${context_id === 0 ? 'Listing' : 'Area'} before chatting.`,
+                          text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });

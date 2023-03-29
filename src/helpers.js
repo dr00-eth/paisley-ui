@@ -336,13 +336,13 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
         return (
             <button
                 key={index}
-                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) ? 'disabled' : ''}
+                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0) ? 'disabled' : ''}
                 value={option.value}
                 onClick={async (e) => {
-                    if (isLoading || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
+                    if (isLoading || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0)) {
                         MySwal.fire({
                             title: 'Quick Actions',
-                            text: `Please select a ${context.state.context_id === 0 ? 'listing' : 'area'} to use Quick Actions!`,
+                            text: `Please select a ${context.state.context_id === 0 ? 'Listing' : (context.state.context_id === 1 ? 'Area': 'Property')} to use Quick Actions!`,
                             icon: 'warning',
                             confirmButtonText: 'OK'
                         });

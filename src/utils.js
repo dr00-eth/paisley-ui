@@ -505,7 +505,7 @@ export async function sendMessage(context, event) {
             })
             .catch(error => console.error(error));
 
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "" };
         await context.setStateAsync({ userMessage: newUserMessage });
     }
 }

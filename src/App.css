@@ -60,6 +60,7 @@ body.swal2-shown > [aria-hidden="true"] {
   transition: transform 0.5s ease;
   position: relative;
   height: calc(100% - 2rem);
+  z-index: 999;
 }
 
 .sidebar.collapsed {
@@ -182,6 +183,7 @@ header {
   color: var(--text-color);
   display: flex;
   align-items: center;
+  text-align: center;
 }
 
 .user-form {
@@ -218,10 +220,28 @@ header {
   border: 0;
   border-bottom: 2px solid var(--accent-color);
   padding: 0.5rem;
-  margin-right: 0.5rem;
+  margin-bottom: 1rem;
   outline: none;
   transition: border-color 0.3s;
   box-sizing: border-box; /* Add this to include padding and border in the width calculation */
+}
+
+.context-group {
+  width: 100%;
+  margin-left: 1rem;
+  display: inline;
+}
+
+.context-group select {
+  width: calc(100% - 75px);
+}
+
+.context-group label {
+  width: 60px;
+}
+
+.context-group label, .context-group select {
+display: inline;
 }
 
 .agent-info {

@@ -451,10 +451,21 @@ class App extends Component {
                   )}
                 </div>
               </form>
+              <div className='sidebar-section context-group'>
+              <select
+                id='context-select'
+                className='Context-dropdown'
+                onChange={(e) => changeContext(this, e)}
+                value={context_id}
+                disabled={isLoading || incomingChatInProgress}
+              >
+                {contextItems}
+              </select>
+              </div>
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
                   <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
-                    <option value="">-- Select Listing --</option>
+                    <option value="">Select Listing</option>
                     {listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
                         {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
@@ -463,7 +474,7 @@ class App extends Component {
                   </select>
                   {listingAreas.length > 0 && (
                     <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
-                      <option value="">-- Select Area --</option>
+                      <option value="">Select Area</option>
                       {listingAreas.map((area) => (
                         <option key={area.areaId} value={area.areaId}>
                           {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
@@ -594,14 +605,6 @@ class App extends Component {
             </div>
           )}
           <div id="chat-input">
-            <select
-              className='Context-dropdown'
-              onChange={(e) => changeContext(this, e)}
-              value={context_id}
-              disabled={isLoading || incomingChatInProgress}
-            >
-              {contextItems}
-            </select>
             <form onSubmit={async (e) => {
               if (userMessage.messageInput === '') {
                 this.MySwal.fire({

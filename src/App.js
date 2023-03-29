@@ -198,6 +198,15 @@ class App extends Component {
       await this.setStateAsync({ messages: this.messageManager.messages, incomingChatInProgress: false });
       this.textareaRef.current.focus();
     });
+
+    if (!this.state.privateMode) {
+      // Load Hotjar tracking code
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.async = true;
+      script.src = `https://static.hotjar.com/c/hotjar-3409222.js?sv=6`;
+      document.head.appendChild(script);
+    }
   }
 
   async fetchLatestVersion() {
@@ -545,13 +554,15 @@ class App extends Component {
                 </option>
               ))}
             </select>
-            <Intercom
-              appID="m7py7ex5"
-              name={this.state.agentName}
-              email={this.state.accountEmail}
-              alignment="right"
-              vertical_padding={20}
-            />
+            {!(this.state.privateMode) && (
+              <Intercom
+                appID="m7py7ex5"
+                name={this.state.agentName}
+                email={this.state.accountEmail}
+                alignment="right"
+                vertical_padding={20}
+              />
+            )}
           </div>
           <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>

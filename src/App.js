@@ -642,25 +642,34 @@ class App extends Component {
                       if (e.target.value === '') {
                         this.MySwal.fire({
                           title: 'Prompt',
-                          text: 'Type a prompt before trying to chat!',
+                          text: 'You must type a prompt or click a Quick Action to chat!',
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });
                       } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
                         this.MySwal.fire({
-                          title: 'Prompt',
+                          title: `${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')}`,
                           text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });
                       } else {
+                        if (incomingChatInProgress) {
+                          this.MySwal.fire({
+                            title: 'Oops',
+                            text: 'Wait for the current message to finish before submitting a new one.',
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                          });
+                          return;
+                        }
                         await sendMessage(this, e);
                         autoGrowTextarea(this.textareaRef);
                       }
                     }
                   }}
                   placeholder="What would you like to ask Paisley?"
-                  disabled={isLoading || incomingChatInProgress}
+                  disabled={isLoading}
                 />
                 <button
                   className='send-button'

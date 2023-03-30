@@ -82,8 +82,6 @@ class SmartMessageManager {
     }
   }
   
-  
-
   toggleFavorite(id) {
     this.messages = this.messages.map((message) => {
       if (message.id === id) {

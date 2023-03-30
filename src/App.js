@@ -649,7 +649,7 @@ class App extends Component {
                       }
                     }
                   }}
-                  placeholder="Enter your message..."
+                  placeholder="What would you like to ask Paisley?"
                   disabled={isLoading || incomingChatInProgress}
                 />
                 <button

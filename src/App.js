@@ -633,6 +633,7 @@ class App extends Component {
                   onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
                     await this.setStateAsync({ userMessage: newUserMessage });
+                    autoGrowTextarea(this.textareaRef);
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={async (e) => {
@@ -654,6 +655,7 @@ class App extends Component {
                         });
                       } else {
                         await sendMessage(this, e);
+                        autoGrowTextarea(this.textareaRef);
                       }
                     }
                   }}

@@ -362,6 +362,7 @@ display: inline;
   box-sizing: content-box;
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
 #chat-display li {

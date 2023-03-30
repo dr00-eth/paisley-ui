@@ -76,6 +76,7 @@ export async function resetChat(context, event) {
     event.preventDefault();
     const { userMessage } = context.state;
     showLoading(context);
+    await updateConversation(context);
     const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
     try {
         await context.setStateAsync({
@@ -85,8 +86,13 @@ export async function resetChat(context, event) {
             isUserListingSelectDisabled: false,
             selectedListingMlsID: '',
             selectedListingMlsNumber: '',
+            selectedListingAddress: '',
             selectedAreaId: 0,
+            selectedAreaName: '',
             selectedListingAreaId: 0,
+            selectedProperty: [],
+            addressSearchString: '',
+            foundProperties: [],
             currentConversation: ''
         });
         await fetch(`${context.apiServerUrl}/api/getmessages/${context.state.context_id}/${context.state.connection_id}`)
@@ -148,7 +154,7 @@ export async function changeContext(context, event) {
                 await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
             }
             if (newContextId === 5) {
-                await context.setStateAsync({ selectedListingAreaId: '' })
+                await context.setStateAsync({ selectedListingAreaId: 0 })
             }
         })
         .catch(error => console.error(error));

@@ -42,7 +42,8 @@ import {
   showLoading,
   hideLoading,
   createButtons,
-  startMessagev2
+  startMessagev2,
+  resetChat
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 
@@ -81,7 +82,7 @@ class App extends Component {
       selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
-      selectedListingAreaId: '',
+      selectedListingAreaId: 0,
       addressSearchString: '',
       addressSuggestions: [],
       foundProperties: [],
@@ -451,7 +452,7 @@ class App extends Component {
                   )}
                 </div>
               </form>
-              <div className='sidebar-section context-group'>
+              {/* <div className='sidebar-section context-group'>
                 <select
                   id='context-select'
                   className='Context-dropdown'
@@ -461,7 +462,7 @@ class App extends Component {
                 >
                   {contextItems}
                 </select>
-              </div>
+              </div> */}
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
                   <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
@@ -566,6 +567,14 @@ class App extends Component {
                 </option>
               ))}
             </select>
+            {conversationsList.length > 0 && currentConversation !== '' && (
+              <button
+              onClick={(e) => {
+                resetChat(this, e);
+              }}>
+                New Chat
+              </button>
+            )}
             {!(this.state.privateMode) && (
               <Intercom
                 appID="m7py7ex5"

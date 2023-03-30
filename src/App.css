@@ -533,9 +533,7 @@ display: inline;
 #conversation-select {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
+  justify-content: center;
 }
 
 #conversation-select select {

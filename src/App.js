@@ -11,7 +11,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
-import { contextItems } from './contexts';
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,

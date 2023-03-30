@@ -11,6 +11,7 @@ import {
     addMessage,
     sendMessage
 } from "./utils";
+import StartItems from "./startItems"
 
 export function showLoading(context) {
     context.setState({ isLoading: true });
@@ -128,7 +129,7 @@ export async function resetConversation(context, event) {
 }
 
 export async function changeContext(context, event) {
-    const { connection_id } = context.state;
+    const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
     await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '' });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
@@ -142,27 +143,36 @@ export async function changeContext(context, event) {
                 await getAgentProfile(context);
                 hideLoading(context);
             }
+            if (newContextId === 2 || newContextId === 3 || newContextId === 4) {
+                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: '' };
+                await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
+            }
+            if (newContextId === 5) {
+                await context.setStateAsync({ selectedListingAreaId: '' })
+            }
         })
         .catch(error => console.error(error));
 }
 
 export function handleMessage(context, data) {
-    const { displayMessages: oldDisplayMessages } = context.state;
-    const displayMessages = [...oldDisplayMessages];
     const { message } = data;
 
     if (message.trim() === '[START_OF_STREAM]') {
         clearTimeout(context.alertTimeout);
-        context.setState({ isWaitingForMessages: false });
-        displayMessages.push({ role: "assistant", content: '', isFav: false });
-
+        context.setState(prevState => {
+            const displayMessages = [...prevState.displayMessages];
+            displayMessages.push({ role: "assistant", content: '', isFav: false });
+            return { displayMessages, isWaitingForMessages: false };
+        });
     } else {
-        const latestDisplayMsg = displayMessages[displayMessages.length - 1];
-        latestDisplayMsg.content += message;
+        context.setState(prevState => {
+            const displayMessages = [...prevState.displayMessages];
+            const latestDisplayMsg = displayMessages[displayMessages.length - 1];
+            latestDisplayMsg.content += message;
+            return { displayMessages };
+        });
     }
-    context.setState({ displayMessages: displayMessages });
 }
-
 
 export async function userSelectedListing(context, event) {
     event.preventDefault();
@@ -327,13 +337,20 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
         return (
             <button
                 key={index}
-                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) ? 'disabled' : ''}
+                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0) ? 'disabled' : ''}
                 value={option.value}
                 onClick={async (e) => {
-                    if (isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0)) {
+                    if (isLoading || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0)) {
                         MySwal.fire({
                             title: 'Quick Actions',
-                            text: `Please select a ${context.state.context_id === 0 ? 'listing' : 'area'} to use Quick Actions!`,
+                            text: `Please select a ${context.state.context_id === 0 ? 'Listing' : (context.state.context_id === 1 ? 'Area' : 'Property')} to use Quick Actions!`,
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                    } else if (incomingChatInProgress) {
+                        MySwal.fire({
+                            title: 'Quick Actions',
+                            text: `Please wait until the current message is complete before selecting a new action.`,
                             icon: 'warning',
                             confirmButtonText: 'OK'
                         });
@@ -378,6 +395,20 @@ export const startMessage = () => {
             <p>Don't forget, you can also use the menu below to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
             <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
             <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
+        </div>
+    )
+};
+
+// helpers.js
+export function startMessagev2(context_id, handleClick) {
+    return (
+        <div className='start-container'>
+            <div className='title-container'>
+                <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
+            </div>
+        <div className='box-container'>
+            <StartItems context_id={context_id} onClick={handleClick} />
+        </div>
         </div>
     )
 };

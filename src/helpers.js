@@ -568,7 +568,7 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
             selectedProperty: state.selectedProperty,
-            addressSearchString: state.addressSearchString,
+            addressSearchString: state.addressSearchString ?? '',
             listingAreas: state.listingAreas,
             deletedMsgs: state.deletedMsgs,
             currentConversation: state.currentConversation,

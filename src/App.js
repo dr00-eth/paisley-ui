@@ -111,7 +111,8 @@ class App extends Component {
     this.alertTimeout = null;
     this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
-    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app';
+    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app'; //dev
+    //this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'; //prod
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
@@ -123,12 +124,17 @@ class App extends Component {
   componentDidMount() {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
     this.updateInterval = setInterval(async () => {
-      const latestVersion = await this.fetchLatestVersion();
-      if (latestVersion && this.state.appVersion !== latestVersion) {
-        this.setState({ appVersion: latestVersion });
-        this.showUpdateAlert();
+      try {
+        const latestVersion = await this.fetchLatestVersion();
+        if (latestVersion && this.state.appVersion !== latestVersion) {
+          this.setState({ appVersion: latestVersion });
+          this.showUpdateAlert();
+        }
+      } catch (error) {
+        console.error('Error fetching latest version:', error);
       }
     }, 30000);
+    
 
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds

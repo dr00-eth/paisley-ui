@@ -17,6 +17,7 @@ import {
   FOLLOWUPMENUITEMS as followupMenuItems,
   PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
+import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
 import SmartMessageManager from './SmartMessageManager';
 import {
   scrollToBottom,
@@ -31,9 +32,8 @@ import {
   handleEnhancePromptClick,
   toggleSwapVibe,
   toggleSidebarCollapse,
-  handleTargetAudienceChange,
-  handleToneChange,
-  handleWritingStyleChange,
+  handleVibeDropdownChange,
+  createVibeDropdown,
   formatKey,
   getConversations,
   userSelectedConversation,
@@ -111,8 +111,8 @@ class App extends Component {
     this.alertTimeout = null;
     this.updateInterval = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
-    this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app'; //dev
-    //this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'; //prod
+    //this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app'; //dev
+    this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'; //prod
     //this.apiServerUrl = 'http://127.0.0.1:8008';
     if (this.apiServerUrl.startsWith('https')) {
       this.webSocketUrl = 'wss' + this.apiServerUrl.slice(5);
@@ -288,35 +288,30 @@ class App extends Component {
 
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
-            <option value="">--Select Writing Style--</option>
-            <option value="luxury">Luxury</option>
-            <option value="straightforward">Straightforward</option>
-            <option value="professional">Professional</option>
-            <option value="creative">Creative</option>
-            <option value="persuasive">Persuasive</option>
-          </select>
-        </div>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.tone} onChange={(e) => handleToneChange(this, e)} id="tone">
-            <option value="">--Select Tone--</option>
-            <option value="friendly">Friendly</option>
-            <option value="conversational">Conversational</option>
-            <option value="to_the_point">To the Point</option>
-            <option value="emotional">Emotional</option>
-          </select>
-        </div>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
-            <option value="">--Select Target Audience--</option>
-            <option value="first_time_home_buyers">First-Time Home Buyers</option>
-            <option value="sellers">Sellers</option>
-            <option value="55plus">55+</option>
-            <option value="empty_nesters">Empty Nesters</option>
-            <option value="investor">Investor</option>
-          </select>
-        </div>
+        {createVibeDropdown(
+          formatOptions,
+          userMessage.format,
+          (e) => handleVibeDropdownChange(this, e, 'format'),
+          'format'
+        )}
+        {createVibeDropdown(
+          writingStyleOptions,
+          userMessage.writingStyle,
+          (e) => handleVibeDropdownChange(this, e, 'writingStyle'),
+          'writing-style'
+        )}
+        {createVibeDropdown(
+          toneOptions,
+          userMessage.tone,
+          (e) => handleVibeDropdownChange(this, e, 'tone'),
+          'tone'
+        )}
+        {createVibeDropdown(
+          targetAudienceOptions,
+          userMessage.targetAudience,
+          (e) => handleVibeDropdownChange(this, e, 'targetAudience'),
+          'audience'
+        )}
       </div>
     );
 

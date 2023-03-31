@@ -312,23 +312,24 @@ export function toggleSidebarCollapse(context, e) {
     }));
 }
 
-export function handleWritingStyleChange(context, e) {
-    e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, writingStyle: e.target.value };
-    context.setState({ userMessage: newUserMessage });
-};
+export function createVibeDropdown(options, currentValue, onChangeHandler, id) {
+    return (
+        <select className='Content-dropdown vibe' value={currentValue} onChange={onChangeHandler} id={id}>
+            <option value="">--Select {id.replace(/-/g, ' ')}--</option>
+            {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    );
+}
 
-export function handleToneChange(context, e) {
+export function handleVibeDropdownChange(context, e, property) {
     e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, tone: e.target.value };
+    const newUserMessage = { ...context.state.userMessage, [property]: e.target.value };
     context.setState({ userMessage: newUserMessage });
-};
-
-export function handleTargetAudienceChange(context, e) {
-    e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, targetAudience: e.target.value };
-    context.setState({ userMessage: newUserMessage });
-};
+}
 
 export function formatKey(str) {
     return str
@@ -413,9 +414,9 @@ export function startMessagev2(context_id, handleClick) {
             <div className='title-container'>
                 <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
             </div>
-        <div className='box-container'>
-            <StartItems context_id={context_id} onClick={handleClick} />
-        </div>
+            <div className='box-container'>
+                <StartItems context_id={context_id} onClick={handleClick} />
+            </div>
         </div>
     )
 };

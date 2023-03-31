@@ -368,7 +368,7 @@ export function generateListingKit(context) {
 
 
 function adjustVibe(context, userMessage) {
-    const { tone, writingStyle, targetAudience, messageInput } = userMessage;
+    const { tone, writingStyle, targetAudience, format, messageInput } = userMessage;
     let vibedMessage = messageInput;
     if (tone) {
         switch (tone) {
@@ -432,11 +432,33 @@ function adjustVibe(context, userMessage) {
                 break;
 
             case 'empty_nesters':
-                vibedMessage += '. Make it targeted at empty nesters looking to downsize.';
+                vibedMessage += '. Make it targeted at empty nesters looking to downsize';
                 break;
 
             case 'investor':
                 vibedMessage += '. Make it targeted at Real Estate Investors';
+                break;
+
+            default:
+                break;
+        }
+    }
+    if (format) {
+        switch (format) {
+            case 'concise':
+                vibedMessage += '. Make output format concise';
+                break;
+
+            case 'step_by_step':
+                vibedMessage += '. Make output format thought out step-by-step';
+                break;
+
+            case 'extreme_detail':
+                vibedMessage += '. Make output extremely detailed';
+                break;
+
+            case 'ELI5':
+                vibedMessage += '. Make output explain like I am 5 years old';
                 break;
 
             default:

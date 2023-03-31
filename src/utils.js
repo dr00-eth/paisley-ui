@@ -301,12 +301,19 @@ export function generateAreaKit(context) {
             createShortUrl(context, kitUrl)
                 .then(shortUrl => {
                     const comment = `Here is your personalized area-focused kit for ${selectedAreaName}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Area Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+
+                    // Get the currentConversation value here
+                    const { currentConversation } = context.state;
                     setTimeout(async () => {
+                        // Check if currentConversation has changed
+                        if (currentConversation !== context.state.currentConversation) {
+                            return;
+                        }
                         await waitForIncomingChatToFinish(context);
                         const { displayMessages } = context.state;
                         const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                        context.setState({ displayMessages: updatedDisplayMessages, areaKitUrl: shortUrl ?? kitUrl });
-                        updateConversation(context);
+                        await context.setStateAsync({ displayMessages: updatedDisplayMessages, areaKitUrl: shortUrl ?? kitUrl });
+                        await updateConversation(context);
                     }, 30000);
                 })
                 .catch(error => {
@@ -334,12 +341,19 @@ export function generateListingKit(context) {
             createShortUrl(context, kitUrl)
                 .then(shortUrl => {
                     const comment = `Here is your personalized listing-focused kit for ${selectedListingAddress}, complete with various assets for you to download and use to promote your listing and generate engagement.\n\nTo access your kit, click on the link:\n\n<a href="${shortUrl ?? kitUrl}" target=_blank>Listing Kit</a>\n\nOnce you have accessed your kit, you will see a variety of assets, including social media posts, mailers, graphics, and infographics. Some of these assets may be still loading, so be sure to wait a few moments for everything to fully load.\n\nChoose the assets you want to use and feel free to ask any questions to me about implementation. With our kit, you'll be able to showcase the unique features of your listing and generate more engagement in no time.\n\nThank you for choosing TheGenie. We hope you find our kit helpful in your marketing efforts!`;
+
+                    // Get the currentConversation value here
+                    const { currentConversation } = context.state;
                     setTimeout(async () => {
+                        // Check if currentConversation has changed
+                        if (currentConversation !== context.state.currentConversation) {
+                            return;
+                        }
                         await waitForIncomingChatToFinish(context);
                         const { displayMessages } = context.state;
                         const updatedDisplayMessages = [...displayMessages, { role: "assistant", content: comment, isKit: true }];
-                        context.setState({ displayMessages: updatedDisplayMessages, listingKitUrl: shortUrl ?? kitUrl });
-                        updateConversation(context);
+                        await context.setStateAsync({ displayMessages: updatedDisplayMessages, listingKitUrl: shortUrl ?? kitUrl });
+                        await updateConversation(context);
                     }, 30000);
                 })
                 .catch(error => {
@@ -350,11 +364,11 @@ export function generateListingKit(context) {
             // handle error
             console.error(error);
         });
-
 }
 
+
 function adjustVibe(context, userMessage) {
-    const { tone, writingStyle, targetAudience, messageInput } = userMessage;
+    const { tone, writingStyle, targetAudience, format, messageInput } = userMessage;
     let vibedMessage = messageInput;
     if (tone) {
         switch (tone) {
@@ -418,11 +432,33 @@ function adjustVibe(context, userMessage) {
                 break;
 
             case 'empty_nesters':
-                vibedMessage += '. Make it targeted at empty nesters looking to downsize.';
+                vibedMessage += '. Make it targeted at empty nesters looking to downsize';
                 break;
 
             case 'investor':
                 vibedMessage += '. Make it targeted at Real Estate Investors';
+                break;
+
+            default:
+                break;
+        }
+    }
+    if (format) {
+        switch (format) {
+            case 'concise':
+                vibedMessage += '. Make output format concise';
+                break;
+
+            case 'step_by_step':
+                vibedMessage += '. Make output format thought out step-by-step';
+                break;
+
+            case 'extreme_detail':
+                vibedMessage += '. Make output extremely detailed';
+                break;
+
+            case 'ELI5':
+                vibedMessage += '. Make output explain like I am 5 years old';
                 break;
 
             default:

@@ -11,13 +11,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 
-import { contextItems } from './contexts';
 import {
   LISTINGMENUITEMS as listingMenuItems,
   AREAMENUITEMS as areaMenuItems,
   FOLLOWUPMENUITEMS as followupMenuItems,
   PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
+import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
 import SmartMessageManager from './SmartMessageManager';
 import {
   scrollToBottom,
@@ -32,9 +32,8 @@ import {
   handleEnhancePromptClick,
   toggleSwapVibe,
   toggleSidebarCollapse,
-  handleTargetAudienceChange,
-  handleToneChange,
-  handleWritingStyleChange,
+  handleVibeDropdownChange,
+  createVibeDropdown,
   formatKey,
   getConversations,
   userSelectedConversation,
@@ -42,7 +41,8 @@ import {
   showLoading,
   hideLoading,
   createButtons,
-  startMessagev2
+  startMessagev2,
+  resetChat
 } from './helpers';
 import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
 
@@ -81,7 +81,7 @@ class App extends Component {
       selectedAreaId: 0,
       selectedListingMlsID: '',
       selectedListingMlsNumber: '',
-      selectedListingAreaId: '',
+      selectedListingAreaId: 0,
       addressSearchString: '',
       addressSuggestions: [],
       foundProperties: [],
@@ -124,12 +124,17 @@ class App extends Component {
   componentDidMount() {
     this.handleUpdateAvailable = this.showUpdateAlert.bind(this);
     this.updateInterval = setInterval(async () => {
-      const latestVersion = await this.fetchLatestVersion();
-      if (latestVersion && this.state.appVersion !== latestVersion) {
-        this.setState({ appVersion: latestVersion });
-        this.showUpdateAlert();
+      try {
+        const latestVersion = await this.fetchLatestVersion();
+        if (latestVersion && this.state.appVersion !== latestVersion) {
+          this.setState({ appVersion: latestVersion });
+          this.showUpdateAlert();
+        }
+      } catch (error) {
+        console.error('Error fetching latest version:', error);
       }
     }, 30000);
+    
 
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
@@ -283,35 +288,30 @@ class App extends Component {
 
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.writingStyle} onChange={(e) => handleWritingStyleChange(this, e)} id="writing-style">
-            <option value="">--Select Writing Style--</option>
-            <option value="luxury">Luxury</option>
-            <option value="straightforward">Straightforward</option>
-            <option value="professional">Professional</option>
-            <option value="creative">Creative</option>
-            <option value="persuasive">Persuasive</option>
-          </select>
-        </div>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.tone} onChange={(e) => handleToneChange(this, e)} id="tone">
-            <option value="">--Select Tone--</option>
-            <option value="friendly">Friendly</option>
-            <option value="conversational">Conversational</option>
-            <option value="to_the_point">To the Point</option>
-            <option value="emotional">Emotional</option>
-          </select>
-        </div>
-        <div>
-          <select className='Content-dropdown vibe' value={userMessage.targetAudience} onChange={(e) => handleTargetAudienceChange(this, e)} id="target-audience">
-            <option value="">--Select Target Audience--</option>
-            <option value="first_time_home_buyers">First-Time Home Buyers</option>
-            <option value="sellers">Sellers</option>
-            <option value="55plus">55+</option>
-            <option value="empty_nesters">Empty Nesters</option>
-            <option value="investor">Investor</option>
-          </select>
-        </div>
+        {createVibeDropdown(
+          formatOptions,
+          userMessage.format,
+          (e) => handleVibeDropdownChange(this, e, 'format'),
+          'format'
+        )}
+        {createVibeDropdown(
+          writingStyleOptions,
+          userMessage.writingStyle,
+          (e) => handleVibeDropdownChange(this, e, 'writingStyle'),
+          'writing-style'
+        )}
+        {createVibeDropdown(
+          toneOptions,
+          userMessage.tone,
+          (e) => handleVibeDropdownChange(this, e, 'tone'),
+          'tone'
+        )}
+        {createVibeDropdown(
+          targetAudienceOptions,
+          userMessage.targetAudience,
+          (e) => handleVibeDropdownChange(this, e, 'targetAudience'),
+          'audience'
+        )}
       </div>
     );
 
@@ -452,7 +452,7 @@ class App extends Component {
                   )}
                 </div>
               </form>
-              <div className='sidebar-section context-group'>
+              {/* <div className='sidebar-section context-group'>
                 <select
                   id='context-select'
                   className='Context-dropdown'
@@ -462,7 +462,7 @@ class App extends Component {
                 >
                   {contextItems}
                 </select>
-              </div>
+              </div> */}
               {context_id === 0 && agentProfileUserId && listings.length > 0 && (
                 <div className='sidebar-section listingSelectBox'>
                   <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
@@ -567,6 +567,14 @@ class App extends Component {
                 </option>
               ))}
             </select>
+            {conversationsList.length > 0 && currentConversation !== '' && (
+              <button
+              onClick={(e) => {
+                resetChat(this, e);
+              }}>
+                New Chat
+              </button>
+            )}
             {!(this.state.privateMode) && (
               <Intercom
                 appID="m7py7ex5"
@@ -626,6 +634,7 @@ class App extends Component {
                   onChange={async (e) => {
                     const newUserMessage = { ...userMessage, messageInput: e.target.value };
                     await this.setStateAsync({ userMessage: newUserMessage });
+                    autoGrowTextarea(this.textareaRef);
                   }}
                   onInput={() => autoGrowTextarea(this.textareaRef)}
                   onKeyDown={async (e) => {
@@ -634,24 +643,34 @@ class App extends Component {
                       if (e.target.value === '') {
                         this.MySwal.fire({
                           title: 'Prompt',
-                          text: 'Type a prompt before trying to chat!',
+                          text: 'You must type a prompt or click a Quick Action to chat!',
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });
                       } else if ((context_id === 0 && selectedListingMlsNumber === '') || (context_id === 1 && selectedAreaId === 0) || (context_id === 5 && selectedProperty.length === 0)) {
                         this.MySwal.fire({
-                          title: 'Prompt',
+                          title: `${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')}`,
                           text: `You must select a ${context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property')} before chatting.`,
                           icon: 'warning',
                           confirmButtonText: 'OK'
                         });
                       } else {
+                        if (incomingChatInProgress) {
+                          this.MySwal.fire({
+                            title: 'Oops',
+                            text: 'Wait for the current message to finish before submitting a new one.',
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                          });
+                          return;
+                        }
                         await sendMessage(this, e);
+                        autoGrowTextarea(this.textareaRef);
                       }
                     }
                   }}
-                  placeholder="Enter your message..."
-                  disabled={isLoading || incomingChatInProgress}
+                  placeholder="What would you like to ask Paisley?"
+                  disabled={isLoading}
                 />
                 <button
                   className='send-button'

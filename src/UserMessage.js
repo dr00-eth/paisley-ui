@@ -5,6 +5,7 @@ class UserMessage {
       this.tone = '';
       this.writingStyle = '';
       this.targetAudience = '';
+      this.format = '';
       this.isEnhanced = false;
     }
   }

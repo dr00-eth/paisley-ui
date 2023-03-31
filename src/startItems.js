@@ -1,6 +1,6 @@
 const startOptions = [
     { value: 0, title: 'Listings', body: 'Create content centered around listing information' },
-    { value: 1, title: 'Areas', body: 'Create content centered around area information' },
+    { value: 1, title: 'Farming', body: 'Create content centered around area information' },
     { value: 5, title: 'Pre-Listings', body: 'Create content BEFORE you put on the MLS' },
     { value: 2, title: 'Coaching', body: 'Ask any Real Estate related question' },
     { value: 3, title: 'Follow Up', body: 'Create engagement follow up content' }

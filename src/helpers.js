@@ -76,6 +76,7 @@ export async function resetChat(context, event) {
     event.preventDefault();
     const { userMessage } = context.state;
     showLoading(context);
+    await updateConversation(context);
     const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "" };
     try {
         await context.setStateAsync({
@@ -85,8 +86,14 @@ export async function resetChat(context, event) {
             isUserListingSelectDisabled: false,
             selectedListingMlsID: '',
             selectedListingMlsNumber: '',
+            selectedListingAddress: '',
             selectedAreaId: 0,
+            selectedAreaName: '',
             selectedListingAreaId: 0,
+            listingAreas: [],
+            selectedProperty: [],
+            addressSearchString: '',
+            foundProperties: [],
             currentConversation: ''
         });
         await fetch(`${context.apiServerUrl}/api/getmessages/${context.state.context_id}/${context.state.connection_id}`)
@@ -148,7 +155,7 @@ export async function changeContext(context, event) {
                 await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
             }
             if (newContextId === 5) {
-                await context.setStateAsync({ selectedListingAreaId: '' })
+                await context.setStateAsync({ selectedListingAreaId: 0 })
             }
         })
         .catch(error => console.error(error));
@@ -305,23 +312,24 @@ export function toggleSidebarCollapse(context, e) {
     }));
 }
 
-export function handleWritingStyleChange(context, e) {
-    e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, writingStyle: e.target.value };
-    context.setState({ userMessage: newUserMessage });
-};
+export function createVibeDropdown(options, currentValue, onChangeHandler, id) {
+    return (
+        <select className='Content-dropdown vibe' value={currentValue} onChange={onChangeHandler} id={id}>
+            <option value="">--Select {id.replace(/-/g, ' ')}--</option>
+            {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    );
+}
 
-export function handleToneChange(context, e) {
+export function handleVibeDropdownChange(context, e, property) {
     e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, tone: e.target.value };
+    const newUserMessage = { ...context.state.userMessage, [property]: e.target.value };
     context.setState({ userMessage: newUserMessage });
-};
-
-export function handleTargetAudienceChange(context, e) {
-    e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, targetAudience: e.target.value };
-    context.setState({ userMessage: newUserMessage });
-};
+}
 
 export function formatKey(str) {
     return str
@@ -406,9 +414,9 @@ export function startMessagev2(context_id, handleClick) {
             <div className='title-container'>
                 <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
             </div>
-        <div className='box-container'>
-            <StartItems context_id={context_id} onClick={handleClick} />
-        </div>
+            <div className='box-container'>
+                <StartItems context_id={context_id} onClick={handleClick} />
+            </div>
         </div>
     )
 };
@@ -427,7 +435,7 @@ function getSimplifiedState(context) {
         selectedAreaId: context.state.selectedAreaId,
         selectedListingAddress: context.state.selectedListingAddress,
         selectedProperty: context.state.selectedProperty,
-        foundProperties: context.state.foundProperties,
+        addressSearchString: context.state.addressSearchString,
         listingAreas: context.state.listingAreas,
         deletedMsgs: context.state.deletedMsgs,
         currentConversation: context.state.currentConversation,
@@ -561,7 +569,7 @@ export async function fetchConversation(context, conversationId) {
             selectedAreaId: state.selectedAreaId,
             selectedListingAddress: state.selectedListingAddress,
             selectedProperty: state.selectedProperty,
-            foundProperties: state.foundProperties,
+            addressSearchString: state.addressSearchString ?? '',
             listingAreas: state.listingAreas,
             deletedMsgs: state.deletedMsgs,
             currentConversation: state.currentConversation,

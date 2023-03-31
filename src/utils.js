@@ -1,5 +1,6 @@
 import { showLoading, hideLoading } from './helpers';
 import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
+import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
 
 export async function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
@@ -367,114 +368,34 @@ export function generateListingKit(context) {
 }
 
 
-function adjustVibe(context, userMessage) {
-    const { tone, writingStyle, targetAudience, format, messageInput } = userMessage;
+function adjustVibe(userMessage) {
+    const { messageInput } = userMessage;
     let vibedMessage = messageInput;
-    if (tone) {
-        switch (tone) {
-            case 'friendly':
-                vibedMessage += '. Make the tone friendly';
-                break;
-
-            case 'conversational':
-                vibedMessage += '. Make the tone conversational';
-                break;
-
-            case 'emotional':
-                vibedMessage += '. Make the tone emotional';
-                break;
-
-            case 'to_the_point':
-                vibedMessage += '. Get to the point quickly';
-                break;
-            default:
-                break;
-        }
-    }
-    if (writingStyle) {
-        switch (writingStyle) {
-            case 'luxury':
-                vibedMessage += '. Make it smooth and focus on luxury';
-                break;
-
-            case 'straightforward':
-                vibedMessage += '. Make it straightforward';
-                break;
-
-            case 'professional':
-                vibedMessage += '. Make it professional';
-                break;
-
-            case 'creative':
-                vibedMessage += '. Make it creative';
-                break;
-
-            case 'persuasive':
-                vibedMessage += '. Make it persuasive';
-                break;
-
-            default:
-                break;
-        }
-    }
-    if (targetAudience) {
-        switch (targetAudience) {
-            case 'first_time_home_buyers':
-                vibedMessage += '. Make it targeted to first time home buyers';
-                break;
-
-            case 'sellers':
-                vibedMessage += '. Make it targeted to home sellers';
-                break;
-
-            case '55plus':
-                vibedMessage += '. Make it targeted at the 55+ retirement community';
-                break;
-
-            case 'empty_nesters':
-                vibedMessage += '. Make it targeted at empty nesters looking to downsize';
-                break;
-
-            case 'investor':
-                vibedMessage += '. Make it targeted at Real Estate Investors';
-                break;
-
-            default:
-                break;
-        }
-    }
-    if (format) {
-        switch (format) {
-            case 'concise':
-                vibedMessage += '. Make output format concise';
-                break;
-
-            case 'step_by_step':
-                vibedMessage += '. Make output format thought out step-by-step';
-                break;
-
-            case 'extreme_detail':
-                vibedMessage += '. Make output extremely detailed';
-                break;
-
-            case 'ELI5':
-                vibedMessage += '. Make output explain like I am 5 years old';
-                break;
-
-            default:
-                break;
-        }
-    }
+  
+    const allOptions = {
+      tone: toneOptions,
+      writingStyle: writingStyleOptions,
+      targetAudience: targetAudienceOptions,
+      format: formatOptions,
+    };
+  
+    Object.entries(allOptions).forEach(([key, options]) => {
+      const selectedOption = options.find((option) => option.value === userMessage[key]);
+      if (selectedOption) {
+        vibedMessage += selectedOption.vibeString;
+      }
+    });
+  
     return vibedMessage;
-}
+  }
 
 export async function sendMessage(context, event) {
     event.preventDefault();
     const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
 
     if (userMessage.messageInput && userMessage.messageInput !== '') {
-        if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience) {
-            userMessage.vibedMessage = adjustVibe(context, userMessage);
+        if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience || userMessage.format) {
+            userMessage.vibedMessage = adjustVibe(userMessage);
         }
         const messageId = context.messageManager.addMessage("user", userMessage.vibedMessage !== '' ? userMessage.vibedMessage : userMessage.messageInput);
         const updatedDisplayMessages = [...displayMessages, {
@@ -484,7 +405,8 @@ export async function sendMessage(context, event) {
             isFav: false,
             tone: userMessage.tone,
             writingStyle: userMessage.writingStyle,
-            targetAudience: userMessage.targetAudience
+            targetAudience: userMessage.targetAudience,
+            format: userMessage.format
         }];
         //We push this ASAP before hitting /api/chat to avoid appening GPT response to previous response
         await context.setStateAsync({ displayMessages: updatedDisplayMessages });
@@ -541,7 +463,7 @@ export async function sendMessage(context, event) {
             })
             .catch(error => console.error(error));
 
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "" };
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "", format: "" };
         await context.setStateAsync({ userMessage: newUserMessage });
     }
 }

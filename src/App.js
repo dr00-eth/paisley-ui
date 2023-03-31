@@ -134,7 +134,7 @@ class App extends Component {
         console.error('Error fetching latest version:', error);
       }
     }, 30000);
-    
+
 
     this.socket = io(this.webSocketUrl, {
       pingInterval: 25000, //25 seconds
@@ -379,13 +379,16 @@ class App extends Component {
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
-          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience) && (
+          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience || msg.format) && (
             <div className="user-message-details" style={{ fontStyle: 'italic', fontSize: 'small' }}>
-              {msg.tone && <span>Tone: {formatKey(msg.tone)}</span>}
-              {msg.tone && msg.writingStyle && <span>, </span>}
-              {msg.writingStyle && <span>Writing Style: {formatKey(msg.writingStyle)}</span>}
-              {(msg.tone || msg.writingStyle) && msg.targetAudience && <span>, </span>}
-              {msg.targetAudience && <span>Target Audience: {formatKey(msg.targetAudience)}</span>}
+              {(() => {
+                const formattedKeys = [];
+                if (msg.tone) formattedKeys.push(`Tone: ${formatKey(msg.tone)}`);
+                if (msg.writingStyle) formattedKeys.push(`Writing Style: ${formatKey(msg.writingStyle)}`);
+                if (msg.targetAudience) formattedKeys.push(`Target Audience: ${formatKey(msg.targetAudience)}`);
+                if (msg.format) formattedKeys.push(`Format: ${formatKey(msg.format)}`);
+                return formattedKeys.join(', ');
+              })()}
             </div>
           )}
 
@@ -569,9 +572,9 @@ class App extends Component {
             </select>
             {conversationsList.length > 0 && currentConversation !== '' && (
               <button
-              onClick={(e) => {
-                resetChat(this, e);
-              }}>
+                onClick={(e) => {
+                  resetChat(this, e);
+                }}>
                 New Chat
               </button>
             )}

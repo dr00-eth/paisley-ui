@@ -519,7 +519,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
         body: JSON.stringify({ areaId: areaId, userId: context.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
     }
     const statsResults = await fetch(areaStatsApi, areaStatsptions);
-    const { statistics } = await statsResults.json();
+    const { statistics, predominateListingZipCode } = await statsResults.json();
 
     const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
     const areaNameOptions = {
@@ -533,9 +533,9 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     const areaStatsPrompts = [];
 
     if (!changeArea) {
-        areaStatsPrompts.push(`Information for ${areaName} area:`);
+        areaStatsPrompts.push(`Information for ${areaName} (located in ${predominateListingZipCode}) area:`);
     } else {
-        areaStatsPrompts.push(`Please focus on ${areaName} and ignore any previous area information provided (if any).`);
+        areaStatsPrompts.push(`Please focus on ${areaName} (located in ${predominateListingZipCode}) and ignore any previous area information provided (if any).`);
     }
 
     if (context.state.areaUserListings.length > 0) {

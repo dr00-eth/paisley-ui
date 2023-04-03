@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import io from 'socket.io-client';
 import { parse, Renderer } from 'marked';
 import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Autosuggest from 'react-autosuggest';
@@ -317,6 +318,7 @@ class App extends Component {
 
     const copyToClipboard = (text, index) => {
       const turndownService = new TurndownService();
+      turndownService.use(gfm);
       const markdown = turndownService.turndown(text);
       navigator.clipboard.writeText(markdown);
 

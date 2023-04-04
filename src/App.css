@@ -159,7 +159,6 @@ img.logo {
   padding-left: 1rem;
   padding-right: 1rem;
   width: 100%;
-  max-width: 90%;
 }
 
 .title-container {
@@ -786,8 +785,9 @@ button:focus {
     font-size: 0.9rem;
   }
 
-  #chat-input {
-    flex-wrap: wrap;
+
+  #chat-area {
+    width: 80%;
   }
 
   .Context-dropdown {
@@ -798,7 +798,6 @@ button:focus {
 
   #chat-input form {
     width: 100%;
-    flex-direction: column;
   }
 
   .button-group {
@@ -813,7 +812,6 @@ button:focus {
     box-sizing: border-box;
   }
 
-  #chat-input button[type="submit"],
   #chat-input button:not([type]) {
     width: calc(50% - 5px);
   }

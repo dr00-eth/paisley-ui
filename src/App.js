@@ -613,6 +613,7 @@ class App extends Component {
           )}
           <div id="chat-input">
             <form onSubmit={async (e) => {
+              e.preventDefault();
               if (userMessage.messageInput === '') {
                 this.MySwal.fire({
                   title: 'Prompt',

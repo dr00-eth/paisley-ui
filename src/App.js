@@ -438,6 +438,7 @@ class App extends Component {
               <form
                 className='user-form'
                 onSubmit={(e) => {
+                  e.preventDefault();
                   showLoading(this);
                   getAgentProfile(this, e);
                   hideLoading(this);

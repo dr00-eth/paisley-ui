@@ -787,15 +787,23 @@ export async function buildPropertyDescription(context) {
     propertyPrompts.push(`The property at ${siteAddress} is located in ${siteAddressCity}, with the zip code ${siteAddressZip}. It last sold on ${saleDate} for ${formatPrice(salePrice ?? 0)}. Current estimated value is ${firstAmericanCurrentAVM}. The property features ${bedrooms} bedrooms and ${bathrooms} bathrooms, with a total square footage of ${sumBuildingSqFt}. It was built in ${yearBuilt} and sits on a ${lotSqFt} square foot lot. The property type is ${propertyType.trim() === '1001' ? 'Single Family Detached' : 'Condo/Townhome/Other'}. The property is owned by ${ownerDisplayName}.`);
 
     if (mlsProperties && mlsProperties.length > 0) {
-        mlsProperties.map((listing) => {
-            const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket } = listing;
-            const priceStr = priceHigh && priceHigh !== priceLow
-                ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
-                : `${formatPrice(priceLow)}`;
-            return propertyPrompts.push(
-                `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}
-                `);
-        })
+        if (mlsProperties && mlsProperties.length > 0) {
+            mlsProperties.forEach((listing, index) => {
+                const { mlsName, mlsNumber, propertyType, saleType, statusType, listDate, soldDate, priceLow, priceHigh, salePrice, daysOnMarket, remarks } = listing;
+                const priceStr = priceHigh && priceHigh !== priceLow
+                    ? `${formatPrice(priceLow)} - ${formatPrice(priceHigh)}`
+                    : `${formatPrice(priceLow)}`;
+                const prompt = `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}`;
+                
+                // Add remarks to the first prompt only
+                if (index === 0) {
+                    propertyPrompts.push(`${prompt} Previous MLS Description: ${remarks}`);
+                } else {
+                    propertyPrompts.push(prompt);
+                }
+            });
+        }
+        
     }
 
     const propertyPrompt = propertyPrompts.join('\n').trim();

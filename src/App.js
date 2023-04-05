@@ -7,7 +7,6 @@ import { gfm } from 'turndown-plugin-gfm';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Autosuggest from 'react-autosuggest';
-import Intercom from 'react-intercom';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -45,7 +44,7 @@ import {
   startMessagev2,
   resetChat
 } from './helpers';
-import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils';
+import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange, initIntercom } from './utils';
 
 class CustomRenderer extends Renderer {
   link(href, title, text) {
@@ -111,6 +110,7 @@ class App extends Component {
     this.textareaRef = React.createRef();
     this.alertTimeout = null;
     this.updateInterval = null;
+    this.intercom = null;
     this.workerUrl = 'https://paisleystate.thegenie.workers.dev/'
     this.apiServerUrl = 'https://paisley-api-develop-9t7vo.ondigitalocean.app'; //dev
     //this.apiServerUrl = 'https://paisley-api-naqoz.ondigitalocean.app'; //prod
@@ -156,6 +156,7 @@ class App extends Component {
             if (this.state.agentProfileUserId) {
               showLoading(this);
               await getAgentProfile(this);
+              this.intercom = initIntercom(this);
               hideLoading(this);
               const { modifiedStates, states } = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
               await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
@@ -586,15 +587,6 @@ class App extends Component {
                 New Chat
               </button>
             )}
-            {!(this.state.privateMode) && (
-              <Intercom
-                appID="m7py7ex5"
-                name={this.state.agentName}
-                email={this.state.accountEmail}
-                alignment="right"
-                vertical_padding={20}
-              />
-            )}
           </div>
           <hr></hr>
           <div id="chat-display" ref={this.chatDisplayRef}>
@@ -708,6 +700,7 @@ class App extends Component {
             <p>Copyright © 2023 1parkplace, Inc. All rights reserved. - TheGenie.ai - US Patent #: 10,713,325</p>
           </div>
         </div>
+        {this.intercom}
       </div>
     );
   }

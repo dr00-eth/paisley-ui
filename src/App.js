@@ -207,13 +207,19 @@ class App extends Component {
     });
 
     if (!this.state.privateMode) {
+      // Create window._hjSettings object
+      window._hjSettings = {
+        hjid: 3409222,
+        hjsv: 6,
+      };
+    
       // Load Hotjar tracking code
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
+      const script = document.createElement("script");
+      script.type = "text/javascript";
       script.async = true;
-      script.src = `https://static.hotjar.com/c/hotjar-3409222.js?sv=6`;
+      script.src = `https://static.hotjar.com/c/hotjar-${window._hjSettings.hjid}.js?sv=${window._hjSettings.hjsv}`;
       document.head.appendChild(script);
-    }
+    }    
   }
 
   async fetchLatestVersion() {

@@ -161,6 +161,20 @@ img.logo {
   width: 100%;
 }
 
+.gpt-container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+}
+
+.gpt-container > .box {
+  min-height: 200px;
+  max-width: calc(100%/5.5);
+}
+
 .title-container {
   text-align: center;
   width: 100%;
@@ -881,6 +895,19 @@ button:focus {
   }
 
   .box-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .gpt-container > .box,
+  .box-container > .box {
+    min-height: 200px;
+    max-width: none;
+    width: 100%;
+}
+
+  .gpt-container {
+    justify-content: space-between;
     flex-direction: column;
     align-items: center;
   }

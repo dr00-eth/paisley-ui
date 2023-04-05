@@ -12,6 +12,7 @@ import {
     sendMessage
 } from "./utils";
 import StartItems from "./startItems"
+import ChatGPTBox from './chatGptBox';
 
 export function showLoading(context) {
     context.setState({ isLoading: true });
@@ -416,6 +417,9 @@ export function startMessagev2(context_id, handleClick) {
             </div>
             <div className='box-container'>
                 <StartItems context_id={context_id} onClick={handleClick} />
+            </div>
+            <div className='gpt-container'>
+                <ChatGPTBox active={context_id === 4} onClick={handleClick} />
             </div>
         </div>
     )

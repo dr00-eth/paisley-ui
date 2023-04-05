@@ -38,7 +38,7 @@ export async function getUserListings(context) {
             const listings = data.properties.filter(property => {
                 const listDate = new Date(property.listDate);
                 const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
-                return daysAgo > 60;
+                return daysAgo < 60;
             });
 
             // sort listings by listDate descending

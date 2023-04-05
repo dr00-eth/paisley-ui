@@ -177,7 +177,8 @@ img.logo {
   width: 100%;
 }
 
-.gpt-container>.box {
+.gpt-container>.box,
+.gpt-container.centered-row>.box {
   min-height: 200px;
   max-width: calc(100%/3.5);
 }

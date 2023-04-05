@@ -387,37 +387,17 @@ export function createButtons(context, menuItems, userMessage, isLoading, incomi
     });
 }
 
-export const startMessage = () => {
-    return (
-        <div>
-            <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
-            <p>To get started, simply type in your question or prompt in the chat bar on the bottom of your screen or select a Quick Action.</p>
-            <p>Whether you need help generating Facebook copy, creating a neighborhood guide, or writing a blog post, Paisley is here to assist you every step of the way.</p>
-            <p>Need some inspiration? Here are a few example prompts to get your creative juices flowing: </p>
-            <ul>
-                <li>"Hey Paisley, can you help me write a blog post about the best schools in the area?"</li>
-                <li>"Paisley, can you generate Facebook copy for my new listing?"</li>
-                <li>"I need to create a neighborhood guide for the area. Can you help me get started, Paisley?"</li>
-                <li>"Can you help me create a seller-focused marketing plan, Paisley?"</li>
-                <li>"I'm looking to create a buyer-focused marketing campaign. Can you assist me, Paisley?"</li>
-            </ul>
-            <p>Don't forget, you can also use the menu below to switch between listing-focused, area-focused, coach Paisley, and follow-up Paisley.</p>
-            <p>Additionally, quick action buttons are available on the menu bar to get you started on using Paisley as a jumping off point.</p>
-            <p>So what are you waiting for? Let Paisley help take your real estate business to the next level.</p>
-        </div>
-    )
-};
-
 // helpers.js
 export function startMessagev2(context_id, handleClick) {
     return (
         <div className='start-container'>
             <div className='title-container'>
-                <h1>Welcome to Paisley</h1><h2><i>Your ultimate real estate productivity booster and colleague!</i></h2>
+                <h2>Ask Paisley - <i>Your ultimate real estate productivity booster and colleague!</i></h2>
             </div>
             <div className='box-container'>
                 <StartItems context_id={context_id} onClick={handleClick} />
             </div>
+            <p>-- Additional (Non-Real Estate) --</p>
             <div className='gpt-container'>
                 <ChatGPTBox active={context_id === 4} onClick={handleClick} />
             </div>

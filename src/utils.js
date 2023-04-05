@@ -1,6 +1,7 @@
 import { showLoading, hideLoading } from './helpers';
 import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
 import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
+import { IntercomProvider } from 'react-use-intercom';
 
 export async function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
@@ -371,23 +372,23 @@ export function generateListingKit(context) {
 function adjustVibe(userMessage) {
     const { messageInput } = userMessage;
     let vibedMessage = messageInput;
-  
+
     const allOptions = {
-      tone: toneOptions,
-      writingStyle: writingStyleOptions,
-      targetAudience: targetAudienceOptions,
-      format: formatOptions,
+        tone: toneOptions,
+        writingStyle: writingStyleOptions,
+        targetAudience: targetAudienceOptions,
+        format: formatOptions,
     };
-  
+
     Object.entries(allOptions).forEach(([key, options]) => {
-      const selectedOption = options.find((option) => option.value === userMessage[key]);
-      if (selectedOption) {
-        vibedMessage += selectedOption.vibeString;
-      }
+        const selectedOption = options.find((option) => option.value === userMessage[key]);
+        if (selectedOption) {
+            vibedMessage += selectedOption.vibeString;
+        }
     });
-  
+
     return vibedMessage;
-  }
+}
 
 export async function sendMessage(context, event) {
     event.preventDefault();
@@ -568,36 +569,36 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
 
     statistics.forEach((lookback, index) => {
         if (index === 0) {
-          areaStatsPrompts.push(
-            `${areaName} contains ${lookback.overallStatistics.taxrollCount} properties.`
-          );
-        }
-      
-        areaStatsPrompts.push(
-          `In the past ${lookback.lookbackMonths} months there were ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`
-        );
-      
-        lookback.propertyTypeStatistics.forEach((propLookback) => {
-          const propTypeDescription = propLookback.propertyTypeDescription;
-          const statistics = propLookback.statistics;
-      
-          if (
-            statistics.soldPropertyTypeCount > 0 &&
-            (propTypeDescription === "Condo/Townhome" ||
-              propTypeDescription === "Single Family Detached")
-          ) {
-            if (index === 0) {
-              areaStatsPrompts.push(
-                `There are ${statistics.taxrollCount} ${propTypeDescription} homes.`
-              );
-            }
             areaStatsPrompts.push(
-              `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
+                `${areaName} contains ${lookback.overallStatistics.taxrollCount} properties.`
             );
-          }
+        }
+
+        areaStatsPrompts.push(
+            `In the past ${lookback.lookbackMonths} months there were ${lookback.overallStatistics.soldPropertyTypeCount} sales, avg. price $${lookback.overallStatistics.averageSalePrice.toLocaleString()}, and avg. ${lookback.overallStatistics.averageDaysOnMarket} days on market.`
+        );
+
+        lookback.propertyTypeStatistics.forEach((propLookback) => {
+            const propTypeDescription = propLookback.propertyTypeDescription;
+            const statistics = propLookback.statistics;
+
+            if (
+                statistics.soldPropertyTypeCount > 0 &&
+                (propTypeDescription === "Condo/Townhome" ||
+                    propTypeDescription === "Single Family Detached")
+            ) {
+                if (index === 0) {
+                    areaStatsPrompts.push(
+                        `There are ${statistics.taxrollCount} ${propTypeDescription} homes.`
+                    );
+                }
+                areaStatsPrompts.push(
+                    `For ${propTypeDescription} homes in the last ${lookback.lookbackMonths} months: avg. sale price $${statistics.averageSalePrice.toLocaleString()}, avg. ${statistics.averageDaysOnMarket} days on market, and avg. $${statistics.averagePricePerSqFt.toLocaleString()} per sq. ft.`
+                );
+            }
         });
-      });
-      
+    });
+
     const areaStatPrompt = areaStatsPrompts.join('\n');
 
     if (!changeArea) {
@@ -800,4 +801,26 @@ export async function buildPropertyDescription(context) {
     await addMessage(context, "user", propertyPrompt, true);
 
     await getListingAreas(context);
+}
+
+export function initIntercom(context) {
+    const { privateMode, agentName, accountEmail, agentProfileUserId } = context.state;
+    if (!privateMode) {
+        return (
+            <IntercomProvider
+                initializeDelay="2000"
+                appId="m7py7ex5"
+                autoBoot="true"
+                autoBootProps={
+                    {
+                        name: agentName,
+                        email: accountEmail,
+                        userId: agentProfileUserId,
+                        alignment: "right",
+                        verticalPadding: 20
+                    }
+                }
+            />
+        )
+    }
 }

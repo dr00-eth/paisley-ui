@@ -177,7 +177,7 @@ img.logo {
   width: 100%;
 }
 
-.box-container.centered-row>.box {
+.box-container .centered-row>.box {
   min-height: 200px;
 }
 

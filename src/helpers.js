@@ -12,6 +12,7 @@ import {
     sendMessage
 } from "./utils";
 import StartItems from "./startItems"
+import ChatGPTBox from './chatGptBox';
 
 export function showLoading(context) {
     context.setState({ isLoading: true });
@@ -151,7 +152,7 @@ export async function changeContext(context, event) {
                 hideLoading(context);
             }
             if (newContextId === 2 || newContextId === 3 || newContextId === 4) {
-                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: '' };
+                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: '', format: '' };
                 await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
             }
             if (newContextId === 5) {
@@ -416,6 +417,9 @@ export function startMessagev2(context_id, handleClick) {
             </div>
             <div className='box-container'>
                 <StartItems context_id={context_id} onClick={handleClick} />
+            </div>
+            <div className='gpt-container'>
+                <ChatGPTBox active={context_id === 4} onClick={handleClick} />
             </div>
         </div>
     )

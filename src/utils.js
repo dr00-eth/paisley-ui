@@ -796,8 +796,8 @@ export async function buildPropertyDescription(context) {
                 const prompt = `Previous listed ${propertyType} in ${mlsName} on ${listDate} as ${saleType} for ${priceStr}. Current Status: ${statusType}. MLS #${mlsNumber} ${soldDate ? `Sold on ${soldDate} for ${formatPrice(salePrice)} after ${daysOnMarket} days on market.` : ''}`;
                 
                 // Add remarks to the first prompt only
-                if (index === 0) {
-                    propertyPrompts.push(`${prompt} Previous MLS Description: ${remarks}`);
+                if (index === 0 && remarks !== '') {
+                    propertyPrompts.push(`${prompt} Previous MLS/Property Description: ${remarks}`);
                 } else {
                     propertyPrompts.push(prompt);
                 }

@@ -31,16 +31,15 @@ import {
   handleVibeDropdownChange,
   createVibeDropdown,
   formatKey,
-  getKv,
   userSelectedConversation,
-  updateConversation,
   showLoading,
   hideLoading,
   createButtons,
   startMessagev2,
-  resetChat,
-  fetchConversationList
-} from './helpers';
+  resetChat} from './helpers';
+import { fetchConversationList } from "./conversation-utils/fetchConversationList";
+import { getKv } from "./kv.utils";
+import { updateConversation } from "./conversation-utils/updateConversation";
 import { sendMessage, getAgentProfile, initIntercom } from './utils';
 
 class CustomRenderer extends Renderer {

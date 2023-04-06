@@ -1,5 +1,8 @@
 import { showLoading, hideLoading } from './helpers';
-import { waitForIncomingChatToFinish, updateConversation, createConversation, getKv, storeKv } from './helpers';
+import { waitForIncomingChatToFinish } from './helpers';
+import { getKv, storeKv } from "./kv.utils";
+import { createConversation } from "./conversation-utils/createConversation";
+import { updateConversation } from "./conversation-utils/updateConversation";
 import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
 import { IntercomProvider } from 'react-use-intercom';
 

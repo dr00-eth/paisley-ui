@@ -6,7 +6,6 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import Autosuggest from 'react-autosuggest';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faSolidHeart, faBars } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
@@ -26,9 +25,6 @@ import {
   handleToggleFavorite,
   changeContext,
   handleMessage,
-  userSelectedListing,
-  userSelectedArea,
-  userSelectedListingArea,
   handleEnhancePromptClick,
   toggleSwapVibe,
   toggleSidebarCollapse,
@@ -44,7 +40,7 @@ import {
   startMessagev2,
   resetChat
 } from './helpers';
-import { sendMessage, getAgentProfile, onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange, initIntercom } from './utils';
+import { sendMessage, getAgentProfile, initIntercom } from './utils';
 
 class CustomRenderer extends Renderer {
   link(href, title, text) {
@@ -271,29 +267,19 @@ class App extends Component {
       context_id,
       displayMessages,
       userMessage,
-      listings,
-      areas,
-      listingAreas,
       isUserIdInputDisabled,
       isLoading,
       incomingChatInProgress,
       agentName,
       agentProfileImage,
       agentProfileUserId,
-      selectedListingAreaId,
       selectedAreaId,
-      isUserListingSelectDisabled,
-      isUserAreaSelectDisabled,
       showCopyNotification,
       isSwapVibeCollapsed,
       isMenuCollapsed,
       conversationsList,
       currentConversation,
-      selectedListingMlsID,
       selectedListingMlsNumber,
-      addressSearchString,
-      addressSuggestions,
-      isAddressSearchDisabled,
       selectedProperty
     } = this.state;
 
@@ -468,80 +454,8 @@ class App extends Component {
                   )}
                 </div>
               </form>
-              {/* <div className='sidebar-section context-group'>
-                <select
-                  id='context-select'
-                  className='Context-dropdown'
-                  onChange={(e) => changeContext(this, e)}
-                  value={context_id}
-                  disabled={isLoading || incomingChatInProgress}
-                >
-                  {contextItems}
-                </select>
-              </div> */}
-              {context_id === 0 && agentProfileUserId && (
-                <div className='sidebar-section listingSelectBox'>
-                  <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
-                    {listings.length === 0 && <option value="">No Listings Available</option>}
-                    {listings.length > 0 && <option value="">Select Listing</option>}
-                    {listings.length > 0 && listings.map((listing, index) => (
-                      <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
-                        {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
-                      </option>
-                    ))}
-                  </select>
-                  {listingAreas.length > 0 && (
-                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
-                      <option value="">Select Area</option>
-                      {listingAreas.map((area) => (
-                        <option key={area.areaId} value={area.areaId}>
-                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-              {context_id === 1 && agentProfileUserId && (
-                <div className='sidebar-section areaSelectBox'>
-                  <select value={selectedAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
-                    {areas.length === 0 && <option value="">No Areas Available</option>}
-                    {areas.length > 0 && <option value="">-- Select Area --</option>}
-                    {areas.length > 0 && areas.map((area) => (
-                      <option key={area.areaId} value={area.areaId}>
-                        {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {context_id === 5 && agentProfileUserId && (
-                <div className='sidebar-section addressSearchBox'>
-                  <Autosuggest
-                    suggestions={addressSuggestions}
-                    onSuggestionsFetchRequested={(value) => onSuggestionsFetchRequested(value, this)}
-                    onSuggestionsClearRequested={() => onSuggestionsClearRequested(this)}
-                    getSuggestionValue={getSuggestionValue}
-                    renderSuggestion={(value) => renderSuggestion(value, this)}
-                    inputProps={{
-                      disabled: isAddressSearchDisabled,
-                      placeholder: 'Enter an address',
-                      value: addressSearchString,
-                      onChange: (event, { newValue }) => autoSuggestOnChange(event, { newValue }, this),
-                    }}
-                  />
-                  {listingAreas.length > 0 && (
-                    <select value={selectedListingAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListingArea(this, e)}>
-                      <option value="">-- Select Area --</option>
-                      {listingAreas.map((area) => (
-                        <option key={area.areaId} value={area.areaId}>
-                          {area.areaName} ({area.areaType}) - {`${area.areaApnCount} properties`}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
+              
+              
             </div>
           </div>
           <div className="sidebar-section quick-actions">
@@ -598,7 +512,7 @@ class App extends Component {
           <div id="chat-display" ref={this.chatDisplayRef}>
             {(() => {
               if (messages.length === 0) {
-                return startMessagev2(context_id, (e) => {
+                return startMessagev2(context_id, this, (e) => {
                   e.preventDefault();
                   changeContext(this, e);
                 });

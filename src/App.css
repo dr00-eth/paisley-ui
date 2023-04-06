@@ -217,6 +217,7 @@ img.logo {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .box h3,
@@ -754,7 +755,6 @@ button:focus {
   display:
     inline-block;
   font-family: "Roboto", sans-serif;
-  margin-left: 1rem;
 }
 
 .addressSearchBox li {
@@ -765,7 +765,8 @@ button:focus {
   background-color: var(--primary-color);
   padding: 0.5rem;
   cursor: pointer;
-  width: 90%;
+  width: 86%;
+  border-radius: 10px;
 }
 
 .addressSearchBox ul {
@@ -781,8 +782,17 @@ button:focus {
   display: flex;
   flex-direction: column;
   width: 100%;
-  margin-left: 2rem;
   margin-bottom: 1rem;
+  position: relative;
+}
+
+div#react-autowhatever-1 {
+  position: absolute;
+  top: 40px;
+  z-index: 999;
+  left: -10px;
+  background: linear-gradient(195deg, rgb(73, 163, 241), rgb(26, 115, 232));
+  border-radius: 10px;
 }
 
 /* For tablet devices (between 768px and 1024px) */

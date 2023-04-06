@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import {
@@ -13,6 +12,9 @@ import {
 } from "./utils";
 import StartItems from "./startItems"
 import ChatGPTBox from './chatGptBox';
+import { updateConversation } from './conversation-utils/updateConversation';
+import { createConversation } from './conversation-utils/createConversation';
+import { fetchConversation } from './conversation-utils/fetchConversation';
 
 export function showLoading(context) {
     context.setState({ isLoading: true });
@@ -139,7 +141,19 @@ export async function resetConversation(context, event) {
 export async function changeContext(context, event) {
     const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
-    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '', selectedAreaId: 0, selectedListingAreaId: 0, listingAreas: [], selectedListingMlsID: '', selectedListingMlsNumber: '', selectedProperty: [] });
+    await context.setStateAsync({ 
+        context_id: newContextId, 
+        messages: context.messageManager.resetMessages(), 
+        displayMessages: [], 
+        currentConversation: '', 
+        selectedAreaId: 0, 
+        selectedListingAreaId: 0, 
+        listingAreas: [], 
+        selectedListingMlsID: '', 
+        selectedListingMlsNumber: '', 
+        selectedProperty: [],
+        foundProperties: [],
+        addressSearchString: '' });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
         .then(async response => await response.json())
         .then(async (data) => {
@@ -450,161 +464,4 @@ export function startMessagev2(context_id, appContext, handleClick) {
     )
 };
 
-function getSimplifiedState(context) {
-    return {
-        messages: context.messageManager.messages,
-        displayMessages: context.state.displayMessages,
-        context_id: context.state.context_id,
-        agentProfileUserId: context.state.agentProfileUserId,
-        gptModel: context.state.gptModel,
-        selectedListingMlsID: context.state.selectedListingMlsID,
-        selectedListingMlsNumber: context.state.selectedListingMlsNumber,
-        selectedListingAreaId: context.state.selectedListingAreaId,
-        selectedAreaName: context.state.selectedAreaName,
-        selectedAreaId: context.state.selectedAreaId,
-        selectedListingAddress: context.state.selectedListingAddress,
-        selectedProperty: context.state.selectedProperty,
-        addressSearchString: context.state.addressSearchString,
-        listingAreas: context.state.listingAreas,
-        deletedMsgs: context.state.deletedMsgs,
-        currentConversation: context.state.currentConversation,
-        isAddressSearchDisabled: context.state.isAddressSearchDisabled,
-        isUserAreaSelectDisabled: context.state.isUserAreaSelectDisabled,
-        isUserListingSelectDisabled: context.state.isUserListingSelectDisabled
-    };
-}
 
-export async function getConversations(context, agentProfileUserId) {
-    const workerURL = context.workerUrl;
-    try {
-        const response = await fetch(workerURL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "getStates", agentProfileUserId: agentProfileUserId }),
-        });
-
-        if (response.ok) {
-            const states = await response.json();
-            const modifiedStates = states.map(({ id, name }) => ({ id, name }));
-            return { modifiedStates, states };
-        } else {
-            throw new Error("Failed to get state from Cloudflare Worker");
-        }
-    } catch (error) {
-        console.error("No states:", error);
-        return { modifiedStates: [], states: [] };
-    }
-};
-
-export async function storeConversations(context, agentProfileUserId, conversations) {
-    const workerURL = context.workerUrl;
-    const { privateMode } = context.state;
-
-    if (Boolean(privateMode) === true) {
-        return;
-    }
-
-    try {
-        const response = await fetch(workerURL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "storeStates", agentProfileUserId: agentProfileUserId, states: conversations }),
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to store state in Cloudflare Worker");
-        }
-    } catch (error) {
-        console.error("Error storing state:", error);
-    }
-};
-
-export async function createConversation(context, conversationName) {
-    const { agentProfileUserId, conversations, conversationsList, context_id } = context.state;
-    const conversationCreated = Math.floor(Date.now() / 1000);
-
-    const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
-
-    if (conversationSearch && conversationName !== '' && (context_id === 0 || context_id === 1 || context_id === 5)) {
-        context.setState({ currentConversation: conversationSearch.id });
-        return fetchConversation(context, conversationSearch.id);
-    }
-
-    const simplifiedState = getSimplifiedState(context);
-
-    const newConversation = {
-        id: uuidv4(),
-        name: conversationName,
-        createdOn: conversationCreated,
-        lastUpdated: conversationCreated,
-        state: simplifiedState
-    }
-
-    const updatedConversations = [...conversations, newConversation];
-    const updatedConversationList = [...conversationsList, { id: newConversation.id, name: newConversation.name }]
-
-    await storeConversations(context, agentProfileUserId, updatedConversations);
-
-    await context.setStateAsync({
-        currentConversation: newConversation.id,
-        conversations: updatedConversations,
-        conversationsList: updatedConversationList
-    });
-}
-
-export async function updateConversation(context) {
-    const { currentConversation, conversations, agentProfileUserId, userMessage } = context.state;
-
-    const simplifiedState = getSimplifiedState(context);
-
-    const conversation = conversations.find((conversation) => conversation.id === currentConversation);
-
-    if (conversation && currentConversation !== '') {
-        conversation.state = simplifiedState;
-
-        // Update the existing conversation in the array using the map function
-        const updatedConversations = conversations.map((c) =>
-            c.id === conversation.id ? { ...c, state: simplifiedState, lastUpdated: Math.floor(Date.now() / 1000) } : c
-        );
-
-        await storeConversations(context, agentProfileUserId, updatedConversations);
-        await context.setStateAsync({
-            conversations: updatedConversations
-        });
-    } else {
-        await createConversation(context, userMessage.messageInput.slice(0, 30));
-    }
-}
-
-export async function fetchConversation(context, conversationId) {
-    const { agentProfileUserId } = context.state;
-
-    const { states } = await getConversations(context, agentProfileUserId); // eslint-disable-line no-unused-vars
-
-    const conversation = states.find((conversationState) => conversationState.id === conversationId);
-    if (conversation) {
-        const { state } = conversation;
-        context.messageManager.messages = state.messages;
-        await context.setStateAsync({
-            messages: context.messageManager.messages,
-            displayMessages: state.displayMessages,
-            context_id: state.context_id,
-            agentProfileUserId: state.agentProfileUserId,
-            gptModel: state.gptModel,
-            selectedListingMlsID: state.selectedListingMlsID,
-            selectedListingMlsNumber: state.selectedListingMlsNumber,
-            selectedListingAreaId: state.selectedListingAreaId,
-            selectedAreaName: state.selectedAreaName,
-            selectedAreaId: state.selectedAreaId,
-            selectedListingAddress: state.selectedListingAddress,
-            selectedProperty: state.selectedProperty,
-            addressSearchString: state.addressSearchString ?? '',
-            listingAreas: state.listingAreas,
-            deletedMsgs: state.deletedMsgs,
-            currentConversation: state.currentConversation,
-            isAddressSearchDisabled: state.isAddressSearchDisabled,
-            isUserAreaSelectDisabled: state.isUserAreaSelectDisabled,
-            isUserListingSelectDisabled: state.isUserListingSelectDisabled,
-        });
-    }
-}

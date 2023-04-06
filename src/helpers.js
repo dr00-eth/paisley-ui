@@ -139,7 +139,7 @@ export async function resetConversation(context, event) {
 export async function changeContext(context, event) {
     const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
-    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '' });
+    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '', selectedAreaId: 0, selectedListingAreaId: 0, listingAreas: [], selectedListingMlsID: '', selectedListingMlsNumber: '', selectedProperty: [] });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
         .then(async response => await response.json())
         .then(async (data) => {
@@ -182,69 +182,74 @@ export function handleMessage(context, data) {
     }
 }
 
-export async function userSelectedListing(context, event) {
-    event.preventDefault();
-    const { selectedListingMlsNumber } = context.state;
-    const [mlsID, mlsNumber] = event.target.value.split('_');
+export function userSelectedListing(context) {
+    return async (event) => {
+        event.preventDefault();
+        const { selectedListingMlsNumber } = context.state;
+        const [mlsID, mlsNumber] = event.target.value.split('_');
 
-    showLoading(context);
+        showLoading(context);
 
-    if (selectedListingMlsNumber && selectedListingMlsNumber !== mlsNumber) {
-        await resetChat(context, event);
-    }
-    await context.setStateAsync({
-        selectedListingMlsID: mlsID,
-        selectedListingMlsNumber: mlsNumber
-    });
+        if (selectedListingMlsNumber && selectedListingMlsNumber !== mlsNumber) {
+            await resetChat(context, event);
+        }
+        await context.setStateAsync({
+            selectedListingMlsID: mlsID,
+            selectedListingMlsNumber: mlsNumber
+        });
 
-    const listingAddress = await getPropertyProfile(context, mlsID, mlsNumber);
-    generateListingKit(context);
-    await createConversation(context, `${listingAddress}`);
+        const listingAddress = await getPropertyProfile(context, mlsID, mlsNumber);
+        await createConversation(context, `${listingAddress}`);
+        generateListingKit(context);
 
-    hideLoading(context);
+        hideLoading(context);
+    };
 }
 
 
-export async function userSelectedArea(context, event) {
-    event.preventDefault();
-    const { selectedAreaId } = context.state;
-    const areaId = event.target.value;
-    showLoading(context);
+export function userSelectedArea(context) {
+    return async (event) => {
+        event.preventDefault();
+        const { selectedAreaId } = context.state;
+        const areaId = event.target.value;
+        showLoading(context);
 
-    if (selectedAreaId && selectedAreaId !== areaId) {
-        await resetChat(context, event);
-    }
+        if (selectedAreaId && selectedAreaId !== areaId) {
+            await resetChat(context, event);
+        }
 
-    await context.setStateAsync({
-        selectedAreaId: areaId,
-    });
+        await context.setStateAsync({
+            selectedAreaId: areaId,
+        });
 
-    await getAreaUserListings(context, areaId);
-    const areaName = await getAreaStatisticsPrompt(context, areaId);
+        await getAreaUserListings(context, areaId);
+        const areaName = await getAreaStatisticsPrompt(context, areaId);
+        await createConversation(context, `${areaName}`);
+        generateAreaKit(context);
 
-    generateAreaKit(context);
-
-    await createConversation(context, `${areaName}`);
-    hideLoading(context);
+        hideLoading(context);
+    };
 }
 
-export async function userSelectedListingArea(context, event) {
-    event.preventDefault();
-    const selectedListingAreaId = event.target.value;
-    const isAreaChange = selectedListingAreaId === context.state.selectedListingAreaId;
+export function userSelectedListingArea(context) {
+    return async (event) => {
+        event.preventDefault();
+        const selectedListingAreaId = event.target.value;
+        const isAreaChange = selectedListingAreaId === context.state.selectedListingAreaId;
 
-    await context.setStateAsync({
-        selectedListingAreaId,
-    });
+        await context.setStateAsync({
+            selectedListingAreaId,
+        });
 
-    showLoading(context);
-    await getAreaStatisticsPrompt(
-        context,
-        selectedListingAreaId,
-        isAreaChange
-    );
-    generateAreaKit(context);
-    hideLoading(context);
+        showLoading(context);
+        await getAreaStatisticsPrompt(
+            context,
+            selectedListingAreaId,
+            isAreaChange
+        );
+        generateAreaKit(context);
+        hideLoading(context);
+    };
 }
 
 export async function userSelectedConversation(context, event) {
@@ -420,14 +425,22 @@ export function createButtons(context, menuItems) {
 }
 
 // helpers.js
-export function startMessagev2(context_id, handleClick) {
+export function startMessagev2(context_id, appContext, handleClick) {
     return (
         <div className='start-container'>
             <div className='title-container'>
                 <h2>Ask Paisley - <i>Your ultimate real estate productivity booster and colleague!</i></h2>
             </div>
             <div className='box-container'>
-                <StartItems context_id={context_id} onClick={handleClick} />
+            <StartItems
+                context_id={context_id}
+                context={appContext}
+                onClick={handleClick}
+                listingChange={userSelectedListing(appContext)}
+                listingAreaChange={userSelectedListingArea(appContext)}
+                areaChange={userSelectedArea(appContext)}
+            />
+
             </div>
             <p>-- Additional (Non-Real Estate) --</p>
             <div className='gpt-container'>

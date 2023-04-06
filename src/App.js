@@ -255,7 +255,7 @@ class App extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     // Only call scrollToBottom when displayMessages has changed
-    if (prevState.displayMessages !== this.state.displayMessages) {
+    if (prevState.displayMessages !== this.state.displayMessages && this.state.displayMessages.length > 0) {
       scrollToBottom(this);
     }
   }  
@@ -371,10 +371,10 @@ class App extends Component {
       </button>
     );
 
-    const listingButtons = createButtons(this, listingMenuItems, userMessage, isLoading, incomingChatInProgress);
-    const areaButtons = createButtons(this, areaMenuItems, userMessage, isLoading, incomingChatInProgress);
-    const followupButtons = createButtons(this, followupMenuItems, userMessage, isLoading, incomingChatInProgress);
-    const prelistingButtons = createButtons(this, prelistingMenuItems, userMessage, isLoading, incomingChatInProgress);
+    const listingButtons = createButtons(this, listingMenuItems);
+    const areaButtons = createButtons(this, areaMenuItems);
+    const followupButtons = createButtons(this, followupMenuItems);
+    const prelistingButtons = createButtons(this, prelistingMenuItems);
 
     const messages = displayMessages.map((msg, index) => {
       let content = '';
@@ -479,11 +479,12 @@ class App extends Component {
                   {contextItems}
                 </select>
               </div> */}
-              {context_id === 0 && agentProfileUserId && listings.length > 0 && (
+              {context_id === 0 && agentProfileUserId && (
                 <div className='sidebar-section listingSelectBox'>
                   <select ref={this.listingSelectRef} value={`${selectedListingMlsID}_${selectedListingMlsNumber}`} className='Content-dropdown' disabled={isUserListingSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedListing(this, e)}>
-                    <option value="">Select Listing</option>
-                    {listings.map((listing, index) => (
+                    {listings.length === 0 && <option value="">No Listings Available</option>}
+                    {listings.length > 0 && <option value="">Select Listing</option>}
+                    {listings.length > 0 && listings.map((listing, index) => (
                       <option key={index} value={`${listing.mlsID}_${listing.mlsNumber}`}>
                         {listing.mlsNumber} - {listing.streetNumber} {listing.streetName} {listing.unitNumber} ({listing.statusType})
                       </option>
@@ -501,11 +502,12 @@ class App extends Component {
                   )}
                 </div>
               )}
-              {context_id === 1 && agentProfileUserId && areas.length > 0 && (
+              {context_id === 1 && agentProfileUserId && (
                 <div className='sidebar-section areaSelectBox'>
                   <select value={selectedAreaId} className='Content-dropdown' disabled={isUserAreaSelectDisabled || incomingChatInProgress} onChange={(e) => userSelectedArea(this, e)}>
-                    <option value="">-- Select Area --</option>
-                    {areas.map((area) => (
+                    {areas.length === 0 && <option value="">No Areas Available</option>}
+                    {areas.length > 0 && <option value="">-- Select Area --</option>}
+                    {areas.length > 0 && areas.map((area) => (
                       <option key={area.areaId} value={area.areaId}>
                         {area.areaName} ({area.areaType}) {area.hasBeenOptimized ? '*' : ''}
                       </option>
@@ -629,7 +631,7 @@ class App extends Component {
                   confirmButtonText: 'OK'
                 });
               } else {
-                await sendMessage(this, e);
+                await sendMessage(this);
               }
 
             }
@@ -672,7 +674,7 @@ class App extends Component {
                           });
                           return;
                         }
-                        await sendMessage(this, e);
+                        await sendMessage(this);
                         autoGrowTextarea(this.textareaRef);
                       }
                     }

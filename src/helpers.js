@@ -328,7 +328,7 @@ export function createVibeDropdown(options, currentValue, onChangeHandler, id) {
 
 export function handleVibeDropdownChange(context, e, property) {
     e.preventDefault();
-    const newUserMessage = { ...context.state.userMessage, [property]: e.target.value };
+    const newUserMessage = { ...context.state.userMessage, [property]: e.target.value, messageInput: 'rewrite with these changes' };
     context.setState({ userMessage: newUserMessage });
 }
 
@@ -340,47 +340,79 @@ export function formatKey(str) {
         .join(' ');
 };
 
-export function createButtons(context, menuItems, userMessage, isLoading, incomingChatInProgress) {
+export function createButtons(context, menuItems) {
     const MySwal = withReactContent(Swal);
+    const showWarning = (title, text) => {
+        MySwal.fire({
+            title,
+            text,
+            icon: 'warning',
+            confirmButtonText: 'OK'
+        });
+    };
+
+    const isInvalidSelection = (context) => {
+        const { context_id, selectedListingMlsNumber, selectedAreaId, selectedProperty, incomingChatInProgress, isLoading } = context.state;
+
+        return incomingChatInProgress || isLoading ||
+            (context_id === 0 && selectedListingMlsNumber === '') ||
+            (context_id === 1 && selectedAreaId === 0) ||
+            (context_id === 5 && selectedProperty.length === 0);
+    };
+
+    const isButtonDisabled = (context) => {
+        const { incomingChatInProgress } = context.state;
+        return isInvalidSelection(context) || incomingChatInProgress;
+    };
+
+    const handleButtonClick = async (context, option) => {
+        const { context_id, listings, areas, incomingChatInProgress, userMessage } = context.state;
+        if (isInvalidSelection(context)) {
+            
+            const warningTitle = 'Quick Actions';
+            if (incomingChatInProgress) {
+                const text = 'Please wait until the current message is complete before selecting a new action.';
+                showWarning(warningTitle, text);
+            }
+            else if (context_id === 0) {
+                const text = listings.length > 0
+                    ? 'Please select a Listing from the sidebar dropdown to use Quick Actions!'
+                    : 'We could not find any listings associated with you. If this is incorrect, please live chat us!';
+                showWarning(warningTitle, text);
+            } else if (context_id === 1) {
+                const text = areas.length > 0
+                    ? 'Please select an Area from the sidebar dropdown to use Quick Actions!'
+                    : 'We could not find any areas in your account. Please add areas in TheGenie Agent Dashboard or contact your title partner!';
+                showWarning(warningTitle, text);
+            } else {
+                const itemType = context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property');
+                showWarning(warningTitle, `Please select a ${itemType} from the sidebar to use Quick Actions!`);
+            }
+        } else {
+            const newUserMessage = { ...userMessage, messageInput: option.value };
+            await context.setStateAsync({ userMessage: newUserMessage });
+            const userMessagePrompt = option.customPrompt;
+            const assistantMessage = `When you say "${option.value}" I will produce a response following this definition`;
+
+            if (!messageExists(context, "user", userMessagePrompt)) {
+                await addMessage(context, "user", userMessagePrompt, true);
+            }
+
+            if (!messageExists(context, "assistant", assistantMessage)) {
+                await addMessage(context, "assistant", assistantMessage, true);
+            }
+
+            await sendMessage(context);
+        }
+    };
+
     return menuItems.map((option, index) => {
         return (
             <button
                 key={index}
-                className={isLoading || incomingChatInProgress || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0) ? 'disabled' : ''}
+                className={isButtonDisabled(context) ? 'disabled' : ''}
                 value={option.value}
-                onClick={async (e) => {
-                    if (isLoading || (context.state.context_id === 0 && context.state.selectedListingMlsNumber === '') || (context.state.context_id === 1 && context.state.selectedAreaId === 0) || (context.state.context_id === 5 && context.state.selectedProperty.length === 0)) {
-                        MySwal.fire({
-                            title: 'Quick Actions',
-                            text: `Please select a ${context.state.context_id === 0 ? 'Listing' : (context.state.context_id === 1 ? 'Area' : 'Property')} to use Quick Actions!`,
-                            icon: 'warning',
-                            confirmButtonText: 'OK'
-                        });
-                    } else if (incomingChatInProgress) {
-                        MySwal.fire({
-                            title: 'Quick Actions',
-                            text: `Please wait until the current message is complete before selecting a new action.`,
-                            icon: 'warning',
-                            confirmButtonText: 'OK'
-                        });
-                    } else {
-                        const newUserMessage = { ...userMessage, messageInput: e.target.value };
-                        await context.setStateAsync({ userMessage: newUserMessage });
-                        const userMessagePrompt = option.customPrompt;
-                        const assistantMessage = `When you say "${option.value}" I will produce a response following this definition`;
-
-                        if (!messageExists(context, "user", userMessagePrompt)) {
-                            await addMessage(context, "user", userMessagePrompt, true);
-                        }
-
-                        if (!messageExists(context, "assistant", assistantMessage)) {
-                            await addMessage(context, "assistant", assistantMessage, true);
-                        }
-
-                        await sendMessage(context, e);
-                    }
-
-                }}>
+                onClick={() => handleButtonClick(context, option)}>
                 {option.label}
             </button>
         );

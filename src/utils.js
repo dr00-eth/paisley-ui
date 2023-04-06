@@ -394,8 +394,7 @@ function adjustVibe(userMessage) {
     return vibedMessage;
 }
 
-export async function sendMessage(context, event) {
-    event.preventDefault();
+export async function sendMessage(context) {
     const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
 
     if (userMessage.messageInput && userMessage.messageInput !== '') {

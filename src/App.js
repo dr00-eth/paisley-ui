@@ -255,7 +255,7 @@ class App extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     // Only call scrollToBottom when displayMessages has changed
-    if (prevState.displayMessages !== this.state.displayMessages) {
+    if (prevState.displayMessages !== this.state.displayMessages && this.state.displayMessages.length > 0) {
       scrollToBottom(this);
     }
   }  

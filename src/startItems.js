@@ -19,7 +19,7 @@ export default function startItems({ context_id, context, onClick, listingChange
             <div className="box-content">
               <p>{option.body}</p>
               {context_id === option.value && context_id === 0 && (
-                <div class="listingSelectBox">
+                <div className="listingSelectBox">
                   <select ref={context.listingSelectRef} value={`${context.state.selectedListingMlsID}_${context.state.selectedListingMlsNumber}`} className='Content-dropdown' disabled={context.state.isUserListingSelectDisabled || context.state.incomingChatInProgress} onChange={listingChange}>
                     {context.state.listings.length === 0 && <option value="">No Listings Available</option>}
                     {context.state.listings.length > 0 && <option value="">Select Listing</option>}

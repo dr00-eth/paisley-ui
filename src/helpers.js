@@ -139,7 +139,7 @@ export async function resetConversation(context, event) {
 export async function changeContext(context, event) {
     const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
-    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '', selectedAreaId: 0, selectedListingAreaId: 0, listingAreas: [] });
+    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '', selectedAreaId: 0, selectedListingAreaId: 0, listingAreas: [], selectedListingMlsID: '', selectedListingMlsNumber: '', selectedProperty: [] });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
         .then(async response => await response.json())
         .then(async (data) => {
@@ -199,8 +199,8 @@ export function userSelectedListing(context) {
         });
 
         const listingAddress = await getPropertyProfile(context, mlsID, mlsNumber);
-        generateListingKit(context);
         await createConversation(context, `${listingAddress}`);
+        generateListingKit(context);
 
         hideLoading(context);
     };
@@ -224,10 +224,9 @@ export function userSelectedArea(context) {
 
         await getAreaUserListings(context, areaId);
         const areaName = await getAreaStatisticsPrompt(context, areaId);
-
+        await createConversation(context, `${areaName}`);
         generateAreaKit(context);
 
-        await createConversation(context, `${areaName}`);
         hideLoading(context);
     };
 }

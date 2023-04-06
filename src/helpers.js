@@ -474,29 +474,28 @@ function getSimplifiedState(context) {
     };
 }
 
-export async function getConversations(context, agentProfileUserId) {
+export async function getKv(context, key) {
     const workerURL = context.workerUrl;
     try {
         const response = await fetch(workerURL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "getStates", agentProfileUserId: agentProfileUserId }),
+            body: JSON.stringify({ method: "getStates", agentProfileUserId: key }),
         });
 
         if (response.ok) {
             const states = await response.json();
-            const modifiedStates = states.map(({ id, name }) => ({ id, name }));
-            return { modifiedStates, states };
+            return states;
         } else {
-            throw new Error("Failed to get state from Cloudflare Worker");
+            throw new Error("Failed to get KV from Cloudflare Worker");
         }
     } catch (error) {
         console.error("No states:", error);
-        return { modifiedStates: [], states: [] };
+        return [];
     }
 };
 
-export async function storeConversations(context, agentProfileUserId, conversations) {
+export async function storeKv(context, key, value) {
     const workerURL = context.workerUrl;
     const { privateMode } = context.state;
 
@@ -508,14 +507,14 @@ export async function storeConversations(context, agentProfileUserId, conversati
         const response = await fetch(workerURL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "storeStates", agentProfileUserId: agentProfileUserId, states: conversations }),
+            body: JSON.stringify({ method: "storeStates", agentProfileUserId: key, states: value }),
         });
 
         if (!response.ok) {
-            throw new Error("Failed to store state in Cloudflare Worker");
+            throw new Error("Failed to store KV in Cloudflare Worker");
         }
     } catch (error) {
-        console.error("Error storing state:", error);
+        console.error("Error storing KV:", error);
     }
 };
 
@@ -543,7 +542,7 @@ export async function createConversation(context, conversationName) {
     const updatedConversations = [...conversations, newConversation];
     const updatedConversationList = [...conversationsList, { id: newConversation.id, name: newConversation.name }]
 
-    await storeConversations(context, agentProfileUserId, updatedConversations);
+    await storeKv(context, agentProfileUserId, updatedConversations);
 
     await context.setStateAsync({
         currentConversation: newConversation.id,
@@ -554,6 +553,10 @@ export async function createConversation(context, conversationName) {
 
 export async function updateConversation(context) {
     const { currentConversation, conversations, agentProfileUserId, userMessage } = context.state;
+
+    if (currentConversation === '') {
+        return;
+    }
 
     const simplifiedState = getSimplifiedState(context);
 
@@ -567,7 +570,7 @@ export async function updateConversation(context) {
             c.id === conversation.id ? { ...c, state: simplifiedState, lastUpdated: Math.floor(Date.now() / 1000) } : c
         );
 
-        await storeConversations(context, agentProfileUserId, updatedConversations);
+        await storeKv(context, agentProfileUserId, updatedConversations);
         await context.setStateAsync({
             conversations: updatedConversations
         });
@@ -576,10 +579,18 @@ export async function updateConversation(context) {
     }
 }
 
+export async function fetchConversationList(context) {
+    const { agentProfileUserId } = context.state;
+
+    const states = await getKv(context, agentProfileUserId);
+    const modifiedStates = states.map(({ id, name }) => ({ id, name }));
+    return modifiedStates;
+}
+
 export async function fetchConversation(context, conversationId) {
     const { agentProfileUserId } = context.state;
 
-    const { states } = await getConversations(context, agentProfileUserId); // eslint-disable-line no-unused-vars
+    const states = await getKv(context, agentProfileUserId); // eslint-disable-line no-unused-vars
 
     const conversation = states.find((conversationState) => conversationState.id === conversationId);
     if (conversation) {

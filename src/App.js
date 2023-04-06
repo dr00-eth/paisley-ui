@@ -31,14 +31,15 @@ import {
   handleVibeDropdownChange,
   createVibeDropdown,
   formatKey,
-  getConversations,
+  getKv,
   userSelectedConversation,
   updateConversation,
   showLoading,
   hideLoading,
   createButtons,
   startMessagev2,
-  resetChat
+  resetChat,
+  fetchConversationList
 } from './helpers';
 import { sendMessage, getAgentProfile, initIntercom } from './utils';
 
@@ -154,8 +155,9 @@ class App extends Component {
               await getAgentProfile(this);
               this.intercom = initIntercom(this);
               hideLoading(this);
-              const { modifiedStates, states } = await getConversations(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
-              await this.setStateAsync({ conversationsList: modifiedStates, conversations: states });
+              const states = await getKv(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
+              const conversationsList = await fetchConversationList(this);
+              await this.setStateAsync({ conversationsList, conversations: states });
             }
           })
           .catch(error => console.error(error));

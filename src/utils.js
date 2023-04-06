@@ -1,129 +1,203 @@
 import { showLoading, hideLoading } from './helpers';
-import { waitForIncomingChatToFinish, updateConversation, createConversation } from './helpers';
+import { waitForIncomingChatToFinish, updateConversation, createConversation, getKv, storeKv } from './helpers';
 import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
 import { IntercomProvider } from 'react-use-intercom';
 
 export async function getUserAreas(context) {
     const { agentProfileUserId } = context.state;
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: agentProfileUserId, includeTerritories: false, consumer: 0 }),
+    const cacheKey = `${agentProfileUserId}_userAreas`;
+
+    // Try to get the userAreas from the cache
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
+
+    // If the userAreas is not in the cache or is outdated, fetch from the API
+    if (!isDataValid) {
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: agentProfileUserId, includeTerritories: false, consumer: 0 }),
+        };
+        await fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
+            .then(async response => await response.json())
+            .then(async data => {
+                const areas = data.areas;
+                areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
+
+                // Create an object with areas and storedAt property
+                cachedData = {
+                    areas: areas,
+                    storedAt: currentTime,
+                };
+
+                // Store the fetched data in the cache
+                await storeKv(context, cacheKey, cachedData);
+            })
+            .catch(error => {
+                // handle error
+                console.error(error);
+            });
     }
-    await fetch('https://app.thegenie.ai/api/Data/GetAvailableAreas', requestOptions)
-        .then(async response => await response.json())
-        .then(async data => {
-            const areas = data.areas;
-            areas.sort((a, b) => b.hasBeenOptimized - a.hasBeenOptimized);
-            // update state with fetched listings
-            await context.setStateAsync({ areas });
-        })
-        .catch(error => {
-            // handle error
-            console.error(error);
-        });
+
+    // update state with fetched areas
+    await context.setStateAsync({ areas: cachedData.areas });
 }
 
 export async function getUserListings(context) {
     const { agentProfileUserId } = context.state;
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false }),
-    }
-    await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
-        .then(async response => await response.json())
-        .then(async data => {
-            // filter properties with listDate > 60 days ago
-            const listings = data.properties.filter(property => {
-                const listDate = new Date(property.listDate);
-                const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
-                if (property.statusType !== "Sold") {
-                    return true;
-                } else {
-                    return daysAgo < 60;
-                }
+    const cacheKey = `${agentProfileUserId}_userListings`;
+
+    // Try to get the agentListings from the cache
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
+
+    // If the agentListings is not in the cache or is outdated, fetch from the API
+    if (!isDataValid) {
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false }),
+        };
+        await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
+            .then(async response => await response.json())
+            .then(async data => {
+                const listings = data.properties.filter(property => {
+                    const listDate = new Date(property.listDate);
+                    const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
+                    if (property.statusType !== "Sold") {
+                        return true;
+                    } else {
+                        return daysAgo < 60;
+                    }
+                });
+
+                // Create an object with listings and storedAt property
+                cachedData = {
+                    listings: listings,
+                    storedAt: currentTime,
+                };
+
+                // Store the fetched data in the cache
+                await storeKv(context, cacheKey, cachedData);
+            })
+            .catch(error => {
+                // handle error
+                console.error(error);
             });
+    }
 
-            // sort listings by listDate descending
-            listings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
-
-            // update state with fetched listings
-            await context.setStateAsync({ listings });
-        })
-        .catch(error => {
-            // handle error
-            console.error(error);
-        });
+    // update state with fetched listings
+    await context.setStateAsync({ listings: cachedData.listings });
 }
+
 
 export async function getAreaUserListings(context, areaId) {
     const { agentProfileUserId } = context.state;
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false, areaId: areaId }),
-    }
-    await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
-        .then(async (response) => await response.json())
-        .then(async (data) => {
-            // filter properties with listDate > 60 days ago
-            const areaUserListings = data.properties.filter(property => {
-                const listDate = new Date(property.listDate);
-                const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
+    const cacheKey = `${agentProfileUserId}_${areaId}_areaUserListings`;
 
-                if (property.statusType !== "Sold") {
-                    return true;
-                } else {
-                    return daysAgo < 90;
-                }
+    // Try to get the areaUserListings from the cache
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
+
+    // If the areaUserListings is not in the cache or is outdated, fetch from the API
+    if (!isDataValid) {
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: agentProfileUserId, includeOpenHouses: false, areaId: areaId }),
+        }
+        await fetch('https://app.thegenie.ai/api/Data/GetAgentProperties', requestOptions)
+            .then(async (response) => await response.json())
+            .then(async (data) => {
+                const areaUserListings = data.properties.filter(property => {
+                    const listDate = new Date(property.listDate);
+                    const daysAgo = (new Date() - listDate) / (1000 * 60 * 60 * 24);
+    
+                    if (property.statusType !== "Sold") {
+                        return true;
+                    } else {
+                        return daysAgo < 90;
+                    }
+                });
+
+                // Create an object with areaUserListings and storedAt property
+                cachedData = {
+                    areaUserListings: areaUserListings,
+                    storedAt: currentTime,
+                };
+
+                // Store the fetched data in the cache
+                await storeKv(context, cacheKey, cachedData);
+            })
+            .catch(error => {
+                // handle error
+                console.error(error);
             });
-            // sort listings by listDate descending
-            areaUserListings.sort((a, b) => new Date(b.listDate) - new Date(a.listDate));
-            // update state with fetched listings
-            await context.setStateAsync({ areaUserListings: areaUserListings });
-        })
-        .catch(error => {
-            // handle error
-            console.error(error);
-        });
+    }
+
+    // update state with fetched listings
+    await context.setStateAsync({ areaUserListings: cachedData.areaUserListings });
 }
+
 
 export async function getListingAreas(context) {
     const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedProperty, context_id } = context.state;
+    const cacheKey = `${agentProfileUserId}_listingAreas`;
 
-    const requestBody = {
-        aspNetUserId: agentProfileUserId,
-        consumer: 0
-    };
+    // Try to get the listingAreas from the cache
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
 
-    if (context_id === 5 && selectedProperty) {
-        requestBody.fips = selectedProperty.fips;
-        requestBody.propertyID = parseInt(selectedProperty.propertyID);
+    // If the listingAreas is not in the cache or is outdated, fetch from the API
+    if (!isDataValid) {
+        const requestBody = {
+            aspNetUserId: agentProfileUserId,
+            consumer: 0
+        };
+
+        if (context_id === 5 && selectedProperty) {
+            requestBody.fips = selectedProperty.fips;
+            requestBody.propertyID = parseInt(selectedProperty.propertyID);
+        }
+    
+        if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
+            requestBody.mlsID = selectedListingMlsID;
+            requestBody.mlsNumber = selectedListingMlsNumber;
+        }
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+        }
+
+        await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
+            .then(async response => await response.json())
+            .then(async (data) => {
+                const listingAreas = data.areas.filter((area) => area.areaApnCount < 50000);
+                listingAreas.sort((a, b) => b.areaApnCount - a.areaApnCount);
+
+                // Create an object with listingAreas and storedAt property
+                cachedData = {
+                    listingAreas: listingAreas,
+                    storedAt: currentTime,
+                };
+
+                // Store the fetched data in the cache
+                await storeKv(context, cacheKey, cachedData);
+            })
+            .catch(error => {
+                // handle error
+                console.error(error);
+            });
     }
 
-    if (context_id === 0 && selectedListingMlsID && selectedListingMlsNumber) {
-        requestBody.mlsID = selectedListingMlsID;
-        requestBody.mlsNumber = selectedListingMlsNumber;
-    }
-
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-    }
-    await fetch('https://app.thegenie.ai/api/Data/GetPropertySurroundingAreas', requestOptions)
-        .then(async response => await response.json())
-        .then(async (data) => {
-            const listingAreas = data.areas.filter((area) => area.areaApnCount < 50000);
-            listingAreas.sort((a, b) => b.areaApnCount - a.areaApnCount);
-            // update state with fetched listing areas
-            await context.setStateAsync({ listingAreas });
-        })
-        .catch(error => {
-            // handle error
-            console.error(error);
-        });
+    // update state with fetched listing areas
+    await context.setStateAsync({ listingAreas: cachedData.listingAreas });
 }
 
 export async function getAddressSuggestions(context, address) {
@@ -312,7 +386,7 @@ export function generateAreaKit(context) {
                     const { currentConversation } = context.state;
                     setTimeout(async () => {
                         // Check if currentConversation has changed
-                        if (currentConversation !== context.state.currentConversation) {
+                        if (currentConversation === '' || currentConversation !== context.state.currentConversation) {
                             return;
                         }
                         await waitForIncomingChatToFinish(context);
@@ -352,7 +426,7 @@ export function generateListingKit(context) {
                     const { currentConversation } = context.state;
                     setTimeout(async () => {
                         // Check if currentConversation has changed
-                        if (currentConversation !== context.state.currentConversation) {
+                        if (currentConversation === '' || currentConversation !== context.state.currentConversation) {
                             return;
                         }
                         await waitForIncomingChatToFinish(context);
@@ -486,13 +560,32 @@ export async function getAgentProfile(context, event) {
         event.preventDefault();
     }
     const userID = event ? event.target[0].value : context.state.agentProfileUserId;
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
+    const cacheKey = `${userID}_profile`;
+
+    // Try to get the agentInfo from the cache
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
+
+    if (!isDataValid) {
+        const genieApi = `https://app.thegenie.ai/api/Data/GetUserProfile/${userID}`;
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=` }
+        }
+        const genieResults = await fetch(genieApi, requestOptions);
+        const agentInfo = await genieResults.json();
+
+        // Create an object with agentInfo and storedAt property
+        cachedData = {
+            agentInfo: agentInfo,
+            storedAt: currentTime,
+        };
+
+        // Store the fetched data in the cache
+        await storeKv(context, cacheKey, cachedData);
     }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const agentInfo = await genieResults.json();
+    const agentInfo = cachedData.agentInfo;
     const name = `${agentInfo.firstName} ${agentInfo.lastName}`;
     const displayName = agentInfo.marketingSettings.profile.displayName ?? name;
     const accountEmail = agentInfo.emailAddress;
@@ -516,15 +609,30 @@ export async function getAgentProfile(context, event) {
 }
 
 export async function getAreaStatisticsPrompt(context, areaId, changeArea = false) {
-    const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
-    const areaStatsptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId: areaId, userId: context.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
-    }
-    const statsResults = await fetch(areaStatsApi, areaStatsptions);
-    const { statistics, predominateListingZipCode } = await statsResults.json();
+    const cacheKey = `${areaId}_areaStats`;
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400;
 
+    if (!isDataValid) {
+        const areaStatsApi = `https://app.thegenie.ai/api/Data/GetAreaStatistics`;
+        const areaStatsptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ areaId: areaId, userId: context.state.agentProfileUserId, consumer: 0, soldMonthRangeIntervals: [1, 3, 6] })
+        }
+        const statsResults = await fetch(areaStatsApi, areaStatsptions);
+        const { statistics, predominateListingZipCode } = await statsResults.json();
+
+        cachedData = {
+            statistics: statistics,
+            predominateListingZipCode: predominateListingZipCode,
+            storedAt: currentTime
+        }
+
+        await storeKv(context, cacheKey, cachedData)
+    }
+    
     const areaNameApi = `https://app.thegenie.ai/api/Data/GetAreaName`;
     const areaNameOptions = {
         method: 'POST',
@@ -537,9 +645,9 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
     const areaStatsPrompts = [];
 
     if (!changeArea) {
-        areaStatsPrompts.push(`Information for ${areaName} (located in ${predominateListingZipCode}) area:`);
+        areaStatsPrompts.push(`Information for ${areaName} (located in ${cachedData.predominateListingZipCode}) area:`);
     } else {
-        areaStatsPrompts.push(`Please focus on ${areaName} (located in ${predominateListingZipCode}) and ignore any previous area information provided (if any).`);
+        areaStatsPrompts.push(`Please focus on ${areaName} (located in ${cachedData.predominateListingZipCode}) and ignore any previous area information provided (if any).`);
     }
 
     if (context.state.areaUserListings.length > 0) {
@@ -570,7 +678,7 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
         }
     }
 
-    statistics.forEach((lookback, index) => {
+    cachedData.statistics.forEach((lookback, index) => {
         if (index === 0) {
             areaStatsPrompts.push(
                 `${areaName} contains ${lookback.overallStatistics.taxrollCount} properties.`
@@ -618,46 +726,62 @@ export async function getAreaStatisticsPrompt(context, areaId, changeArea = fals
 }
 
 export async function getPropertyProfile(context, mlsId, mlsNumber) {
-    const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
-    const requestOptions = {
-        method: 'POST',
-        headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mlsId: mlsId, mlsNumber: mlsNumber, userId: context.state.agentProfileUserId, consumer: 0 })
-    }
-    const genieResults = await fetch(genieApi, requestOptions);
-    const { listing, ...rest } = await genieResults.json();
-    const listingInfo = { ...listing };
-    const fullResponse = { listing, ...rest };
+    const cacheKey = `${mlsId}_${mlsNumber}`;
+    let cachedData = await getKv(context, cacheKey);
+    let currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
+    let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400;
 
-    const listingAddress = listingInfo.listingAddress;
+    if (!isDataValid) {
+        const genieApi = `https://app.thegenie.ai/api/Data/GetUserMlsListing`;
+        const requestOptions = {
+            method: 'POST',
+            headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mlsId: mlsId, mlsNumber: mlsNumber, userId: context.state.agentProfileUserId, consumer: 0 })
+        }
+        const genieResults = await fetch(genieApi, requestOptions);
+        const { listing, ...rest } = await genieResults.json();
+        const listingInfo = { ...listing };
+        const fullResponse = { listing, ...rest };
+
+        cachedData = {
+            listingInfo: listingInfo,
+            fullResponse: fullResponse,
+            storedAt: currentTime,
+        };
+
+        // Store the fetched data in the cache
+        await storeKv(context, cacheKey, cachedData);
+    }
+
+    const listingAddress = cachedData.listingInfo.listingAddress;
     await context.setStateAsync({ selectedListingAddress: listingAddress });
-    const virtualTourUrl = listingInfo.virtualTourUrl ?? 'Not provided';
-    const bedrooms = listingInfo.bedrooms;
-    const totalBathrooms = listingInfo.totalBathrooms;
-    const propertyType = listingInfo.propertyType;
-    const propertyTypeId = listingInfo.propertyTypeID;
-    const city = listingInfo.city;
-    const state = listingInfo.state;
-    const zip = listingInfo.zip;
-    const squareFeet = listingInfo.squareFeet ?? 'Not provided';
-    const acres = listingInfo.acres ?? 'Not provided';
-    const garageSpaces = listingInfo.garageSpaces ?? 'Not provided';
-    const yearBuilt = listingInfo.yearBuilt ?? 'Not provided';
-    const listingAgentName = listingInfo.listingAgentName;
-    const listingBrokerName = listingInfo.listingBrokerName;
-    const listingStatus = listingInfo.listingStatus;
-    const remarks = listingInfo.remarks;
-    const preferredAreaId = fullResponse.preferredAreaId;
+    const virtualTourUrl = cachedData.listingInfo.virtualTourUrl ?? 'Not provided';
+    const bedrooms = cachedData.listingInfo.bedrooms;
+    const totalBathrooms = cachedData.listingInfo.totalBathrooms;
+    const propertyType = cachedData.listingInfo.propertyType;
+    const propertyTypeId = cachedData.listingInfo.propertyTypeID;
+    const city = cachedData.listingInfo.city;
+    const state = cachedData.listingInfo.state;
+    const zip = cachedData.listingInfo.zip;
+    const squareFeet = cachedData.listingInfo.squareFeet ?? 'Not provided';
+    const acres = cachedData.listingInfo.acres ?? 'Not provided';
+    const garageSpaces = cachedData.listingInfo.garageSpaces ?? 'Not provided';
+    const yearBuilt = cachedData.listingInfo.yearBuilt ?? 'Not provided';
+    const listingAgentName = cachedData.listingInfo.listingAgentName;
+    const listingBrokerName = cachedData.listingInfo.listingBrokerName;
+    const listingStatus = cachedData.listingInfo.listingStatus;
+    const remarks = cachedData.listingInfo.remarks;
+    const preferredAreaId = cachedData.fullResponse.preferredAreaId;
     const formatPrice = (price) => {
         return `$${price.toLocaleString()}`;
     };
     const priceStr = listingStatus === "Sold"
-        ? `${formatPrice(listingInfo.salePrice)}`
-        : (listingInfo.highPrice && listingInfo.highPrice !== listingInfo.lowPrice
-            ? `${formatPrice(listingInfo.lowPrice)} - ${formatPrice(listingInfo.highPrice)}`
-            : `${formatPrice(listingInfo.lowPrice)}`
+        ? `${formatPrice(cachedData.listingInfo.salePrice)}`
+        : (cachedData.listingInfo.highPrice && cachedData.listingInfo.highPrice !== cachedData.listingInfo.lowPrice
+            ? `${formatPrice(cachedData.listingInfo.lowPrice)} - ${formatPrice(cachedData.listingInfo.highPrice)}`
+            : `${formatPrice(cachedData.listingInfo.lowPrice)}`
         );
-    const featuresStr = listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
+    const featuresStr = cachedData.listingInfo.features.map(feature => `${feature.key}: ${feature.value}`).join(', ');
 
     const assistantPrompt = "Do you have a specific MLS Listing for help today?";
 

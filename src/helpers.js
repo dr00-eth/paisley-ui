@@ -139,7 +139,19 @@ export async function resetConversation(context, event) {
 export async function changeContext(context, event) {
     const { connection_id, userMessage } = context.state;
     const newContextId = parseInt(event.target.value);
-    await context.setStateAsync({ context_id: newContextId, messages: context.messageManager.resetMessages(), displayMessages: [], currentConversation: '', selectedAreaId: 0, selectedListingAreaId: 0, listingAreas: [], selectedListingMlsID: '', selectedListingMlsNumber: '', selectedProperty: [] });
+    await context.setStateAsync({ 
+        context_id: newContextId, 
+        messages: context.messageManager.resetMessages(), 
+        displayMessages: [], 
+        currentConversation: '', 
+        selectedAreaId: 0, 
+        selectedListingAreaId: 0, 
+        listingAreas: [], 
+        selectedListingMlsID: '', 
+        selectedListingMlsNumber: '', 
+        selectedProperty: [],
+        foundProperties: [],
+        addressSearchString: '' });
     await fetch(`${context.apiServerUrl}/api/getmessages/${newContextId}/${connection_id}`)
         .then(async response => await response.json())
         .then(async (data) => {
@@ -525,30 +537,35 @@ export async function createConversation(context, conversationName) {
     const conversationSearch = conversationsList.find((conversation) => conversation.name === conversationName);
 
     if (conversationSearch && conversationName !== '' && (context_id === 0 || context_id === 1 || context_id === 5)) {
-        context.setState({ currentConversation: conversationSearch.id });
+        await context.setStateAsync({ currentConversation: conversationSearch.id });
         return fetchConversation(context, conversationSearch.id);
+    }
+
+
+    const conversationStub = {
+        id: uuidv4(),
+        name: conversationName,
+        createdOn: conversationCreated,
+        lastUpdated: conversationCreated
     }
 
     const simplifiedState = getSimplifiedState(context);
 
-    const newConversation = {
-        id: uuidv4(),
-        name: conversationName,
-        createdOn: conversationCreated,
-        lastUpdated: conversationCreated,
-        state: simplifiedState
-    }
+    const stateWithId = {...simplifiedState, currentConversation: conversationStub.id};
+
+    const newConversation = {...conversationStub, state: stateWithId};
 
     const updatedConversations = [...conversations, newConversation];
     const updatedConversationList = [...conversationsList, { id: newConversation.id, name: newConversation.name }]
-
-    await storeKv(context, agentProfileUserId, updatedConversations);
 
     await context.setStateAsync({
         currentConversation: newConversation.id,
         conversations: updatedConversations,
         conversationsList: updatedConversationList
     });
+
+    await storeKv(context, agentProfileUserId, updatedConversations);
+
 }
 
 export async function updateConversation(context) {
@@ -591,7 +608,6 @@ export async function fetchConversation(context, conversationId) {
     const { agentProfileUserId } = context.state;
 
     const states = await getKv(context, agentProfileUserId); // eslint-disable-line no-unused-vars
-
     const conversation = states.find((conversationState) => conversationState.id === conversationId);
     if (conversation) {
         const { state } = conversation;
@@ -612,7 +628,7 @@ export async function fetchConversation(context, conversationId) {
             addressSearchString: state.addressSearchString ?? '',
             listingAreas: state.listingAreas,
             deletedMsgs: state.deletedMsgs,
-            currentConversation: state.currentConversation,
+            currentConversation: state.currentConversation === "" ? conversation.id : state.currentConversation,
             isAddressSearchDisabled: state.isAddressSearchDisabled,
             isUserAreaSelectDisabled: state.isUserAreaSelectDisabled,
             isUserListingSelectDisabled: state.isUserListingSelectDisabled,

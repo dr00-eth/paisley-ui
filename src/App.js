@@ -157,7 +157,7 @@ class App extends Component {
               hideLoading(this);
               const states = await getKv(this, this.state.agentProfileUserId); // eslint-disable-line no-unused-vars
               const conversationsList = await fetchConversationList(this);
-              await this.setStateAsync({ conversationsList, conversations: states });
+              await this.setStateAsync({ conversationsList: conversationsList, conversations: states });
             }
           })
           .catch(error => console.error(error));

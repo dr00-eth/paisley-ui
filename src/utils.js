@@ -142,10 +142,9 @@ export async function getAreaUserListings(context, areaId) {
     await context.setStateAsync({ areaUserListings: cachedData.areaUserListings });
 }
 
-
 export async function getListingAreas(context) {
     const { agentProfileUserId, selectedListingMlsID, selectedListingMlsNumber, selectedProperty, context_id } = context.state;
-    const cacheKey = `${agentProfileUserId}_listingAreas`;
+    const cacheKey = `${agentProfileUserId}_${selectedListingMlsNumber ? selectedListingMlsNumber : selectedProperty.propertyID}_listingAreas`;
 
     // Try to get the listingAreas from the cache
     let cachedData = await getKv(context, cacheKey);

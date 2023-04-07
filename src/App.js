@@ -102,6 +102,7 @@ class App extends Component {
       isMenuCollapsed: false,
     };
     this.chatDisplayRef = React.createRef();
+    this.prevMessagesCount = 0;
     this.listingSelectRef = React.createRef();
     this.textareaRef = React.createRef();
     this.alertTimeout = null;

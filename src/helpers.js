@@ -25,10 +25,34 @@ export function hideLoading(context) {
 }
 
 export function scrollToBottom(context) {
-    if (context.chatDisplayRef.current) {
-        context.chatDisplayRef.current.scrollTop = context.chatDisplayRef.current.scrollHeight;
+    const chatDisplay = context.chatDisplayRef.current;
+  
+    if (chatDisplay) {
+      const scrollHeight = chatDisplay.scrollHeight;
+      const scrollTop = chatDisplay.scrollTop;
+      const clientHeight = chatDisplay.clientHeight;
+      const threshold = 105;
+  
+      const prevMessagesCount = context.prevMessagesCount || 0;
+      const currentMessagesCount = context.state.displayMessages.length;
+  
+      // Check if the user is already at the bottom of the chat display
+      const isNearBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+  
+      // Check if the number of messages has increased
+      const isNewMessage = currentMessagesCount > prevMessagesCount;
+  
+      if (isNearBottom || isNewMessage) {
+        chatDisplay.scrollTop = scrollHeight;
+      }
+  
+      // Update the previous messages count
+      context.prevMessagesCount = currentMessagesCount;
     }
-}
+  }
+  
+  
+  
 
 export function autoGrowTextarea(textareaRef) {
     const textarea = textareaRef.current;

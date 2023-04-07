@@ -209,7 +209,12 @@ img.logo {
   background: linear-gradient(195deg, rgb(116, 123, 138), rgb(73, 83, 97));
   color: white;
   box-shadow: rgb(0 0 0 / 25%) 0rem 1.25rem 1.6875rem 0rem;
+  transition: box-shadow 1s ease-in-out;
   position: relative;
+}
+
+.box.active {
+  box-shadow: rgb(67 160 71 / 50%) 0rem 1.25rem 1.6875rem 0rem;
 }
 
 .box-content {

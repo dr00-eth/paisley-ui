@@ -14,7 +14,7 @@ export default function startItems({ context_id, context, onClick, listingChange
     <>
       {startOptions.map((option, index) => {
         const box = (
-          <div className="box" key={option.value}>
+          <div className={`box ${context_id === option.value ? 'active' : ''}`} key={option.value}>
             <h3>{option.title}</h3>
             <div className="box-content">
               <p>{option.body}</p>
@@ -89,7 +89,7 @@ export default function startItems({ context_id, context, onClick, listingChange
               )}
             </div>
             {context_id === option.value && (
-              <div className="active-banner">ACTIVE</div>
+              <div className="active-banner">ACTIVE - Start Typing!</div>
             )}
           </div>
         );

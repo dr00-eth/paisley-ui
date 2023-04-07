@@ -89,7 +89,23 @@ export default function startItems({ context_id, context, onClick, listingChange
               )}
             </div>
             {context_id === option.value && (
-              <div className="active-banner">ACTIVE - Start Typing!</div>
+              (() => {
+                if (context_id === 0 && !context.state.selectedListingMlsNumber) {
+                  return <div className="active-banner">ACTIVE - Select Listing</div>
+                } else if (context_id === 0 && context.state.selectedListingMlsNumber) {
+                  return <div className="active-banner">ACTIVE - Start Typing!</div>
+                } else if (context_id === 1 && !context.state.selectedAreaId) {
+                  return <div className="active-banner">ACTIVE - Select Area</div>
+                } else if (context_id === 1 && context.state.selectedListingAreaId) {
+                  return <div className="active-banner">ACTIVE - Start Typing!</div>
+                } else if (context_id === 5 && context.state.selectedProperty.length === 0) {
+                  return <div className="active-banner">ACTIVE - Search for Address</div>
+                } else if (context_id === 5 && context.state.addressSearchString && context.state.listingAreas.length > 0 && context.state.selectedListingAreaId === 0) {
+                  return <div className="active-banner">ACTIVE - Select Area (Optional)</div>
+                } else {
+                  return <div className="active-banner">ACTIVE - Start Typing!</div>
+                } 
+              })()
             )}
           </div>
         );

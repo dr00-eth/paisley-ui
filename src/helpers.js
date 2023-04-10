@@ -419,17 +419,17 @@ export function createButtons(context, menuItems) {
             }
             else if (context_id === 0) {
                 const text = listings.length > 0
-                    ? 'Please select a Listing from the sidebar dropdown to use Quick Actions!'
+                    ? 'Please select a Listing from the dropdown to use Quick Actions!'
                     : 'We could not find any listings associated with you. If this is incorrect, please live chat us!';
                 showWarning(warningTitle, text);
             } else if (context_id === 1) {
                 const text = areas.length > 0
-                    ? 'Please select an Area from the sidebar dropdown to use Quick Actions!'
+                    ? 'Please select an Area from the dropdown to use Quick Actions!'
                     : 'We could not find any areas in your account. Please add areas in TheGenie Agent Dashboard or contact your title partner!';
                 showWarning(warningTitle, text);
             } else {
                 const itemType = context_id === 0 ? 'Listing' : (context_id === 1 ? 'Area' : 'Property');
-                showWarning(warningTitle, `Please select a ${itemType} from the sidebar to use Quick Actions!`);
+                showWarning(warningTitle, `Please select a ${itemType} from the dropdown to use Quick Actions!`);
             }
         } else {
             const newUserMessage = { ...userMessage, messageInput: option.value };

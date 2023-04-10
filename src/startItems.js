@@ -115,7 +115,7 @@ export default function startItems({ context_id, context, onClick, listingChange
             <div key="centered-row" className="centered-row">
               {box}
               {startOptions[4] && (
-                <div className="box" key={startOptions[4].value}>
+                <div className={`box ${context_id === startOptions[4].value ? 'active' : ''}`} key={startOptions[4].value}>
                   <h3>{startOptions[4].title}</h3>
                   <div className="box-content">
                     <p>{startOptions[4].body}</p>
@@ -129,7 +129,9 @@ export default function startItems({ context_id, context, onClick, listingChange
                     )}
                   </div>
                   {context_id === startOptions[4].value && (
-                    <div className="active-banner">ACTIVE</div>
+                    (() => {
+                        return <div className="active-banner">ACTIVE - Start Typing!</div>
+                    })()
                   )}
                 </div>
               )}

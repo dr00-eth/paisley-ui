@@ -28,3 +28,11 @@ export const formatOptions = [
     { value: 'extreme_detail', label: 'Extreme Detail', vibeString: '. Make output extremely detailed' },
     { value: 'ELI5', label: 'ELI5(Simple)', vibeString: '. Make output explain like I am 5 years old' },
 ];
+
+export const languageOptions = [
+    { value: 'english', label: 'English (default)', vibeString: '. Translate to US English' },
+    { value: 'spanish', label: 'Spanish', vibeString: '. Translate to Spanish' },
+    { value: 'french', label: 'French', vibeString: '. Translate to French' },
+    { value: 'mandarin', label: 'Mandarin', vibeString: '. Translate to Mandarin Chinese' },
+    { value: 'hindi', label: 'Hindi', vibeString: '. Translate to Hindi' },
+];

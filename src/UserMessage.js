@@ -6,6 +6,7 @@ class UserMessage {
       this.writingStyle = '';
       this.targetAudience = '';
       this.format = '';
+      this.language = '';
       this.isEnhanced = false;
     }
   }

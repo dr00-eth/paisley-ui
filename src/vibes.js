@@ -30,9 +30,9 @@ export const formatOptions = [
 ];
 
 export const languageOptions = [
-    { value: 'english', label: 'English (default)', vibeString: '. Translate to US English' },
-    { value: 'spanish', label: 'Spanish', vibeString: '. Translate to Spanish' },
-    { value: 'french', label: 'French', vibeString: '. Translate to French' },
-    { value: 'mandarin', label: 'Mandarin', vibeString: '. Translate to Mandarin Chinese' },
-    { value: 'hindi', label: 'Hindi', vibeString: '. Translate to Hindi' },
+    { value: 'english', label: 'English (default)', vibeString: '. Produce output in US English' },
+    { value: 'spanish', label: 'Spanish', vibeString: '. Produce output in Spanish' },
+    { value: 'french', label: 'French', vibeString: '. Produce output in French' },
+    { value: 'mandarin', label: 'Mandarin', vibeString: '. Produce output in Mandarin Chinese' },
+    { value: 'hindi', label: 'Hindi', vibeString: '. Produce output in Hindi' },
 ];

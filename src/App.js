@@ -16,7 +16,7 @@ import {
   FOLLOWUPMENUITEMS as followupMenuItems,
   PRELISTINGMENUITEMS as prelistingMenuItems,
 } from './constants';
-import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
+import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions, languageOptions } from './vibes';
 import SmartMessageManager from './SmartMessageManager';
 import {
   scrollToBottom,
@@ -288,6 +288,12 @@ class App extends Component {
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         {createVibeDropdown(
+          languageOptions,
+          userMessage.language,
+          (e) => handleVibeDropdownChange(this, e, 'language'),
+          'language'
+        )}
+        {createVibeDropdown(
           formatOptions,
           userMessage.format,
           (e) => handleVibeDropdownChange(this, e, 'format'),
@@ -379,7 +385,7 @@ class App extends Component {
         >
           <div className="sender">{msg.role === "user" ? "Me:" : "Paisley:"}</div>
           <div className="message" dangerouslySetInnerHTML={{ __html: content }}></div>
-          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience || msg.format) && (
+          {msg.role === "user" && (msg.tone || msg.writingStyle || msg.targetAudience || msg.format || msg.language) && (
             <div className="user-message-details" style={{ fontStyle: 'italic', fontSize: 'small' }}>
               {(() => {
                 const formattedKeys = [];
@@ -387,6 +393,7 @@ class App extends Component {
                 if (msg.writingStyle) formattedKeys.push(`Writing Style: ${formatKey(msg.writingStyle)}`);
                 if (msg.targetAudience) formattedKeys.push(`Target Audience: ${formatKey(msg.targetAudience)}`);
                 if (msg.format) formattedKeys.push(`Format: ${formatKey(msg.format)}`);
+                if (msg.language) formattedKeys.push(`Language: ${formatKey(msg.language)}`);
                 return formattedKeys.join(', ');
               })()}
             </div>

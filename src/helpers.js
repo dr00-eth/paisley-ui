@@ -190,7 +190,7 @@ export async function changeContext(context, event) {
                 hideLoading(context);
             }
             if (newContextId === 2 || newContextId === 3 || newContextId === 4) {
-                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: '', format: '' };
+                const newUserMessage = { ...userMessage, tone: '', writingStyle: '', targetAudience: '', format: '', language: '' };
                 await context.setStateAsync({ userMessage: newUserMessage, isSwapVibeCollapsed: true });
             }
             if (newContextId === 5) {

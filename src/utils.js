@@ -3,7 +3,7 @@ import { waitForIncomingChatToFinish } from './helpers';
 import { getKv, storeKv } from "./kv.utils";
 import { createConversation } from "./conversation-utils/createConversation";
 import { updateConversation } from "./conversation-utils/updateConversation";
-import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions } from './vibes';
+import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions, languageOptions } from './vibes';
 import { IntercomProvider } from 'react-use-intercom';
 
 export async function getUserAreas(context) {
@@ -458,6 +458,7 @@ function adjustVibe(userMessage) {
         writingStyle: writingStyleOptions,
         targetAudience: targetAudienceOptions,
         format: formatOptions,
+        language: languageOptions
     };
 
     Object.entries(allOptions).forEach(([key, options]) => {
@@ -474,7 +475,7 @@ export async function sendMessage(context) {
     const { displayMessages, connection_id, context_id, gptModel, userMessage, currentConversation } = context.state;
 
     if (userMessage.messageInput && userMessage.messageInput !== '') {
-        if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience || userMessage.format) {
+        if (userMessage.writingStyle || userMessage.tone || userMessage.targetAudience || userMessage.format || userMessage.language) {
             userMessage.vibedMessage = adjustVibe(userMessage);
         }
         const messageId = context.messageManager.addMessage("user", userMessage.vibedMessage !== '' ? userMessage.vibedMessage : userMessage.messageInput);
@@ -486,7 +487,8 @@ export async function sendMessage(context) {
             tone: userMessage.tone,
             writingStyle: userMessage.writingStyle,
             targetAudience: userMessage.targetAudience,
-            format: userMessage.format
+            format: userMessage.format,
+            language: userMessage.language,
         }];
         //We push this ASAP before hitting /api/chat to avoid appening GPT response to previous response
         await context.setStateAsync({ displayMessages: updatedDisplayMessages });
@@ -543,7 +545,7 @@ export async function sendMessage(context) {
             })
             .catch(error => console.error(error));
 
-        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "", format: "" };
+        const newUserMessage = { ...userMessage, messageInput: "", vibedMessage: "", tone: "", writingStyle: "", targetAudience: "", format: "", language: "" };
         await context.setStateAsync({ userMessage: newUserMessage });
     }
 }

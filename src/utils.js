@@ -375,7 +375,7 @@ export function generateAreaKit(context) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_id: agentProfileUserId, areaID: selectedAreaId, collection: 'market-report-kit', saveDB: true, async: false }),
     }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
         .then(response => response.json())
         .then(data => {
             const collection = data.result.collection;
@@ -415,7 +415,7 @@ export function generateListingKit(context) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_id: agentProfileUserId, collection: 'just-listed-kit', mlsNumber: selectedListingMlsNumber, mlsID: selectedListingMlsID, saveDB: true, async: false }),
     }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
         .then(response => response.json())
         .then(data => {
             const collection = data.result.collection;

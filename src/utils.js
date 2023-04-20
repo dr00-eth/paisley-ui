@@ -347,10 +347,15 @@ export function autoSuggestOnChange(event, { newValue }, context) {
 export function createShortUrl(context, url) {
     const { agentProfileUserId, agentName } = context.state;
     const shortUrlApi = `https://app.thegenie.ai/api/Data/GenerateShortUrl`;
+
+    // Create URLSearchParams object
+    const searchParams = new URLSearchParams();
+    searchParams.set("no-cache", "True");
+
     const urlOptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: url, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
+        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: `${url}?${searchParams.toString()}`, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
     };
 
     return fetch(shortUrlApi, urlOptions)
@@ -375,7 +380,7 @@ export function generateAreaKit(context) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_id: agentProfileUserId, areaID: selectedAreaId, collection: 'market-report-kit', saveDB: true, async: false }),
     }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
         .then(response => response.json())
         .then(data => {
             const collection = data.result.collection;
@@ -415,7 +420,7 @@ export function generateListingKit(context) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_id: agentProfileUserId, collection: 'just-listed-kit', mlsNumber: selectedListingMlsNumber, mlsID: selectedListingMlsID, saveDB: true, async: false }),
     }
-    fetch('https://hubsandbox.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
+    fetch('https://hub.thegenie.ai/wp-json/genie/v1/create-render', requestOptions)
         .then(response => response.json())
         .then(data => {
             const collection = data.result.collection;

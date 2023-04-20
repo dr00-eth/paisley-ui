@@ -347,10 +347,15 @@ export function autoSuggestOnChange(event, { newValue }, context) {
 export function createShortUrl(context, url) {
     const { agentProfileUserId, agentName } = context.state;
     const shortUrlApi = `https://app.thegenie.ai/api/Data/GenerateShortUrl`;
+
+    // Create URLSearchParams object
+    const searchParams = new URLSearchParams();
+    searchParams.set("no-cache", "True");
+
     const urlOptions = {
         method: 'POST',
         headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: url, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
+        body: JSON.stringify({ userId: agentProfileUserId, destinationUrl: `${url}?${searchParams.toString()}`, data: { "utm_source": "paisley", "client_name": agentName }, consumer: 0 })
     };
 
     return fetch(shortUrlApi, urlOptions)

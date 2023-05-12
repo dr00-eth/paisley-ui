@@ -6,7 +6,7 @@ import { updateConversation } from "./conversation-utils/updateConversation";
 import { writingStyleOptions, toneOptions, targetAudienceOptions, formatOptions, languageOptions } from './vibes';
 import { IntercomProvider } from 'react-use-intercom';
 
-export async function getUserAreas(context) {
+export async function getUserAreas(context, forceRefresh = false) {
     const { agentProfileUserId } = context.state;
     const cacheKey = `${agentProfileUserId}_userAreas`;
 
@@ -16,7 +16,7 @@ export async function getUserAreas(context) {
     let isDataValid = cachedData && (currentTime - cachedData.storedAt) < 86400; // Check if data is not older than 24 hours
 
     // If the userAreas is not in the cache or is outdated, fetch from the API
-    if (!isDataValid) {
+    if (!isDataValid || forceRefresh) {
         const requestOptions = {
             method: 'POST',
             headers: { Authorization: `Basic MXBwSW50ZXJuYWw6MXBwMW43NCEhYXo=`, 'Content-Type': 'application/json' },

@@ -1,4 +1,8 @@
 import Autosuggest from 'react-autosuggest';
+import { getUserAreas } from './utils';
+import { showLoading, hideLoading } from './helpers';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSync } from "@fortawesome/free-solid-svg-icons";
 import { onSuggestionsClearRequested, onSuggestionsFetchRequested, getSuggestionValue, renderSuggestion, autoSuggestOnChange } from './utils'
 const startOptions = [
   { value: 0, title: 'Listing Focus', body: 'Create content centered around listing information' },
@@ -53,6 +57,11 @@ export default function startItems({ context_id, context, onClick, listingChange
                     )
                     )}
                   </select>
+                  <button className='refresh-icon' onClick={async () => {
+                    showLoading(context);
+                    await getUserAreas(context, true);
+                    hideLoading(context);
+                  }}><FontAwesomeIcon icon={faSync} /></button>
                 </div>
               )}
               {context_id === option.value && context_id === 5 && context.state.agentProfileUserId && (
@@ -104,7 +113,7 @@ export default function startItems({ context_id, context, onClick, listingChange
                   return <div className="active-banner">ACTIVE - Select Area (Optional)</div>
                 } else {
                   return <div className="active-banner">ACTIVE - Start Typing!</div>
-                } 
+                }
               })()
             )}
           </div>
@@ -130,7 +139,7 @@ export default function startItems({ context_id, context, onClick, listingChange
                   </div>
                   {context_id === startOptions[4].value && (
                     (() => {
-                        return <div className="active-banner">ACTIVE - Start Typing!</div>
+                      return <div className="active-banner">ACTIVE - Start Typing!</div>
                     })()
                   )}
                 </div>

@@ -315,6 +315,15 @@ header {
   /* Add this to include padding and border in the width calculation */
 }
 
+.areaSelectBox .Content-dropdown {
+  width: 75%;
+  display: inline;
+}
+
+.areaSelectBox .refresh-icon {
+  width: 15%;
+}
+
 .Content-dropdown option,
 .Context-dropdown option {
   color: black;

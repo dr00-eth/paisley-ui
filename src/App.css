@@ -318,6 +318,7 @@ header {
 .areaSelectBox .Content-dropdown {
   width: 75%;
   display: inline;
+  margin-right: 0;
 }
 
 .areaSelectBox .refresh-icon {

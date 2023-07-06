@@ -218,6 +218,19 @@ class App extends Component {
       script.async = true;
       script.src = `https://static.hotjar.com/c/hotjar-${window._hjSettings.hjid}.js?sv=${window._hjSettings.hjsv}`;
       document.head.appendChild(script);
+
+      // Add deprecation notice
+      this.MySwal.fire({
+        title: 'App Deprecation Notice',
+        text: 'The Paisley Prototype is no longer supported. Please use the live version by logging in to TheGenie at https://app.thegenie.ai',
+        icon: 'warning',
+        confirmButtonText: 'Go to Live Version',
+        showCancelButton: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'https://app.thegenie.ai';
+        }
+      });
     }    
   }
 

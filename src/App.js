@@ -220,18 +220,21 @@ class App extends Component {
       document.head.appendChild(script);
 
       // Add deprecation notice
-      this.MySwal.fire({
-        title: 'App Deprecation Notice',
-        text: 'The Paisley Prototype is no longer supported. Please use the live version by logging in to TheGenie at https://app.thegenie.ai',
-        icon: 'warning',
-        confirmButtonText: 'Go to Live Version',
-        showCancelButton: false,
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.location.href = 'https://app.thegenie.ai';
-        }
-      });
+      this.showDeprecationAlert();
     }    
+  }
+
+  showDeprecationAlert() {
+    this.MySwal.fire({
+      title: 'App Deprecation Notice',
+      text: 'The Paisley Prototype is no longer supported. Please use the live version by logging in to TheGenie at https://app.thegenie.ai',
+      icon: 'warning',
+      confirmButtonText: 'Go to Live Version',
+      showCancelButton: false,
+      showConfirmButton: false, // Disable the confirm button to prevent the alert from being closed
+      allowOutsideClick: false, // Prevent closing the alert when clicking outside of it
+      allowEscapeKey: false, // Prevent closing the alert when pressing the Escape key
+    });
   }
 
   async fetchLatestVersion() {
@@ -298,6 +301,15 @@ class App extends Component {
       selectedProperty
     } = this.state;
 
+    if (!this.state.privateMode) {
+      // Render only the deprecation notice if privateMode is false
+      return (
+        <div className="App">
+          {/* The deprecation notice will be shown here */}
+        </div>
+      );
+    }
+    
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         {createVibeDropdown(

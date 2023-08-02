@@ -231,9 +231,12 @@ class App extends Component {
       icon: 'warning',
       confirmButtonText: 'Go to Live Version',
       showCancelButton: false,
-      showConfirmButton: false, // Disable the confirm button to prevent the alert from being closed
-      allowOutsideClick: false, // Prevent closing the alert when clicking outside of it
-      allowEscapeKey: false, // Prevent closing the alert when pressing the Escape key
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = 'https://app.thegenie.ai'; // Redirect to the specified URL on button click
+      }
     });
   }
 
@@ -309,7 +312,7 @@ class App extends Component {
         </div>
       );
     }
-    
+
     const swapVibeSection = (
       <div className={`swap-vibe-section ${isSwapVibeCollapsed ? 'collapsed' : ''}`}>
         {createVibeDropdown(
